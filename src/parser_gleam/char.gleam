@@ -88,10 +88,8 @@ pub fn digit() -> Parser(Char, Char) {
 }
 
 fn is_space(c: Char) {
-  // TODO: optimize it (regex from orig lib)
-  c
-  |> string.trim()
-  |> string.is_empty()
+  assert Ok(re) = regex.from_string("^\\s$")
+  regex.check(with: re, content: c)
 }
 
 /// Matches a single whitespace character.

@@ -11,7 +11,6 @@ import gleam/option.{None, Option, Some}
 import fp2/non_empty_list as nea
 
 fn char_at(index: Int, s: String) -> Option(Char) {
-  // TODO check it
   let r =
     s
     |> string.to_graphemes()
@@ -24,7 +23,6 @@ fn char_at(index: Int, s: String) -> Option(Char) {
 }
 
 fn slice(index: Int, s: String) -> String {
-  // TODO check it
   s
   |> string.slice(index, string.length(s) - index)
 }
@@ -51,13 +49,16 @@ pub fn string(s: String) -> Parser(Char, String) {
   )
 }
 
-// TODO how to implement this???
-// pub fn one_of(f) {
-//   fn(ss) -> Parser(Char, String) {
-//     // 
-//     todo
-//   }
-// }
+pub fn one_of(lst: List(String)) -> Parser(Char, String) {
+  lst
+  |> list.fold(
+    p.fail(),
+    fn(prev, str) {
+      prev
+      |> p.alt(fn() { string(str) })
+    },
+  )
+}
 
 // -------------------------------------------------------------------------------------
 // destructors
@@ -65,7 +66,8 @@ pub fn string(s: String) -> Parser(Char, String) {
 
 /// Matches one of a list of strings.
 pub fn fold(ass: List(Parser(i, String))) -> Parser(i, String) {
-  m.concat_all(p.get_monoid(m.monoid_string()))(ass)
+  ass
+  |> m.concat_all(p.get_monoid(m.monoid_string()))
 }
 
 // -------------------------------------------------------------------------------------

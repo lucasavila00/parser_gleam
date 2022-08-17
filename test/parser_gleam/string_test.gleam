@@ -6,6 +6,7 @@ import parser_gleam/parse_result.{error, success}
 import parser_gleam/stream.{stream} as st
 import gleam/option.{None, Some}
 import gleam/string
+import gleam/list
 
 pub fn main() {
   gleeunit.main()
@@ -51,10 +52,42 @@ pub fn parse_non_empty_string_test() {
   ))
 }
 
-// TODO implement it
-// pub fn long_strings_recursion_limit_test() {
-//   todo
-// }
+pub fn long_strings_recursion_limit_test() {
+  let lorem = "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+
+  // TODO: increase these numbers?
+  let target =
+    lorem
+    |> list.repeat(10)
+    |> string.join(" ")
+
+  let source =
+    lorem
+    |> list.repeat(100)
+    |> string.join(" ")
+
+  let cursor =
+    target
+    |> string.length()
+
+  let parser = s.string(target)
+
+  parser
+  |> s.run(source)
+  |> should.equal(success(
+    target,
+    stream(
+      source
+      |> string.to_graphemes(),
+      Some(cursor),
+    ),
+    stream(
+      source
+      |> string.to_graphemes(),
+      None,
+    ),
+  ))
+}
 
 pub fn many_repeated_sequences_target_test() {
   let parser = s.many(s.string("ab"))
@@ -117,10 +150,37 @@ pub fn many_repeat_long_sequences_no_rec_limit() {
   ))
 }
 
-// TODO implement it
-// pub fn string_one_of_test() {
-//   todo
-// }
+pub fn string_one_of_test() {
+  let parser = s.one_of(["a", "b"])
+
+  parser
+  |> s.run("a")
+  |> should.equal(success("a", stream(["a"], Some(1)), stream(["a"], None)))
+
+  parser
+  |> s.run("ab")
+  |> should.equal(success(
+    "a",
+    stream(["a", "b"], Some(1)),
+    stream(["a", "b"], None),
+  ))
+
+  parser
+  |> s.run("ba")
+  |> should.equal(success(
+    "b",
+    stream(["b", "a"], Some(1)),
+    stream(["b", "a"], None),
+  ))
+
+  parser
+  |> s.run("ca")
+  |> should.equal(error(
+    stream(["c", "a"], None),
+    Some(["\"a\"", "\"b\""]),
+    None,
+  ))
+}
 
 pub fn string_int_test() {
   let parser = s.int()
