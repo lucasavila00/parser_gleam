@@ -1,8 +1,9 @@
 import parser_gleam/parser.{Parser} as p
 import gleam/string
 import gleam/regex
-import parser_gleam/monoid.{monoid_string}
-import parser_gleam/predicate.{not}
+import fp2/monoid.{monoid_string}
+import fp2/predicate.{not}
+import fp2/non_empty_list as nea
 
 fn maybe() {
   p.maybe(monoid_string())
@@ -61,6 +62,7 @@ pub fn many1(parser: Parser(Char, Char)) -> Parser(Char, String) {
   p.many1(parser)
   |> p.map(fn(nea) {
     nea
+    |> nea.to_list()
     |> string.join("")
   })
 }
@@ -75,7 +77,7 @@ pub fn digit() -> Parser(Char, Char) {
 }
 
 fn is_space(c: Char) {
-  // TODO: optimize it
+  // TODO: optimize it (regex from orig lib)
   c
   |> string.trim()
   |> string.is_empty()
@@ -90,7 +92,6 @@ fn is_underscore(c: Char) -> Bool {
 }
 
 fn is_letter(c: Char) {
-  // TODO: check it
   assert Ok(re) = regex.from_string("[a-z]")
   regex.check(
     with: re,

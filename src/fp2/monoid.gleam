@@ -1,4 +1,4 @@
-import parser_gleam/semigroup.{Semigroup}
+import fp2/semigroup.{Semigroup}
 import gleam/string
 import gleam/list
 
@@ -16,4 +16,8 @@ pub fn concat_all(m: Monoid(a)) {
 
 pub fn to_semigroup(m: Monoid(a)) -> Semigroup(a) {
   Semigroup(m.concat)
+}
+
+pub fn from_semigroup(s: Semigroup(a), empty: a) -> Monoid(a) {
+  Monoid(s.concat, empty)
 }

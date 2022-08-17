@@ -1,15 +1,15 @@
 import parser_gleam/stream.{Stream, at_end, get_and_next}
-import parser_gleam/predicate.{Predicate, not}
-import parser_gleam/monoid.{Monoid}
-import parser_gleam/semigroup.{Semigroup}
-import parser_gleam/function.{Lazy, identity}
-import parser_gleam/chain_rec.{tail_rec}
+import fp2/non_empty_list.{NonEmptyList} as nea
+import fp2/predicate.{Predicate, not}
+import fp2/monoid.{Monoid}
+import fp2/semigroup.{Semigroup}
+import fp2/function.{Lazy, identity}
+import fp2/chain_rec.{tail_rec}
 import parser_gleam/parse_result.{
   ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
 }
 import gleam/option.{None, Option, Some}
 import gleam/result
-import gleam/list
 
 // -------------------------------------------------------------------------------------
 // model
@@ -187,7 +187,7 @@ pub fn chain_rec(a: a, f: fn(a) -> Parser(i, Result(b, a))) -> Parser(i, b) {
 }
 
 // -------------------------------------------------------------------------------------
-// constructors (TODO: compiler breaks if they're defined before chain)
+// constructors (compiler breaks if they're defined before chain)
 // -------------------------------------------------------------------------------------
 
 pub fn sat(predicate: Predicate(i)) -> Parser(i, i) {
@@ -202,7 +202,7 @@ pub fn sat(predicate: Predicate(i)) -> Parser(i, i) {
 }
 
 // -------------------------------------------------------------------------------------
-// combinators (TODO: compiler breaks if they're defined before chain)
+// combinators (compiler breaks if they're defined before chain)
 // -------------------------------------------------------------------------------------
 
 pub fn cut_with(p1: Parser(i, a), p2: Parser(i, b)) -> Parser(i, b) {
@@ -219,17 +219,18 @@ pub fn maybe(m: Monoid(a)) {
 
 pub fn many(p: Parser(i, a)) -> Parser(i, List(a)) {
   many1(p)
+  |> map(nea.to_list)
   |> alt(fn() { of([]) })
 }
 
-pub fn many1(parser: Parser(i, a)) -> Parser(i, List(a)) {
+pub fn many1(parser: Parser(i, a)) -> Parser(i, NonEmptyList(a)) {
   parser
   |> chain(fn(head) {
     chain_rec(
-      [head],
+      nea.of(head),
       fn(acc) {
         parser
-        |> map(fn(a) { Error(list.append(acc, [a])) })
+        |> map(fn(a) { Error(nea.append(acc, a)) })
         |> alt(fn() { of(Ok(acc)) })
       },
     )
@@ -238,25 +239,35 @@ pub fn many1(parser: Parser(i, a)) -> Parser(i, List(a)) {
 
 pub fn sep_by(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, List(b)) {
   sep_by1(sep, p)
+  |> map(nea.to_list)
   |> alt(fn() { of([]) })
 }
 
-pub fn sep_by1(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, List(b)) {
+pub fn sep_by1(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, NonEmptyList(b)) {
   p
   |> chain(fn(head) {
     many(
       sep
       |> ap_second(p),
     )
-    |> map(fn(tail) { list.append([head], tail) })
+    |> map(fn(tail) {
+      tail
+      |> nea.prepend_list(head)
+    })
   })
 }
 
-pub fn sep_by_cut(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, List(b)) {
+pub fn sep_by_cut(
+  sep: Parser(i, a),
+  p: Parser(i, b),
+) -> Parser(i, NonEmptyList(b)) {
   p
   |> chain(fn(head) {
     many(cut_with(sep, p))
-    |> map(fn(tail) { list.append([head], tail) })
+    |> map(fn(tail) {
+      tail
+      |> nea.prepend_list(head)
+    })
   })
 }
 
@@ -306,31 +317,32 @@ pub fn optional(parser: Parser(i, a)) -> Parser(i, Option(a)) {
   |> alt(fn() { succeed(None) })
 }
 
-// TODO: non empty array???
-// TODO: look for other places of NEA
 pub fn many_till(
   parser: Parser(i, a),
   terminator: Parser(i, b),
 ) -> Parser(i, List(a)) {
   terminator
   |> map(fn(_) { [] })
-  |> alt(fn() { many1_till(parser, terminator) })
+  |> alt(fn() {
+    many1_till(parser, terminator)
+    |> map(nea.to_list)
+  })
 }
 
 pub fn many1_till(
   parser: Parser(i, a),
   terminator: Parser(i, b),
-) -> Parser(i, List(a)) {
+) -> Parser(i, NonEmptyList(a)) {
   parser
   |> chain(fn(x) {
     chain_rec(
-      [x],
+      nea.of(x),
       fn(acc) {
         terminator
         |> map(fn(_) { Ok(acc) })
         |> alt(fn() {
           parser
-          |> map(fn(a) { Error(list.append(acc, [a])) })
+          |> map(fn(a) { Error(nea.append(acc, a)) })
         })
       },
     )

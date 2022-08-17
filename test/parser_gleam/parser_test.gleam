@@ -1,6 +1,7 @@
 import gleeunit
 import gleeunit/should
 import parser_gleam/char as c
+import fp2/non_empty_list as nea
 import parser_gleam/parser as p
 import parser_gleam/string as s
 import parser_gleam/parse_result.{error, success}
@@ -175,7 +176,7 @@ pub fn parser_sep_by1_test() {
   parser
   |> s.run("a,b")
   |> should.equal(success(
-    ["a"],
+    nea.of("a"),
     stream(["a", ",", "b"], Some(1)),
     stream(["a", ",", "b"], None),
   ))
@@ -195,7 +196,8 @@ pub fn parser_sep_by_cut_test() {
   parser
   |> s.run("a,a")
   |> should.equal(success(
-    ["a", "a"],
+    nea.of("a")
+    |> nea.append("a"),
     stream(["a", ",", "a"], Some(3)),
     stream(["a", ",", "a"], None),
   ))
@@ -385,7 +387,9 @@ pub fn parser_many1_till_test() {
   parser
   |> s.run("abc-")
   |> should.equal(success(
-    ["a", "b", "c"],
+    nea.of("a")
+    |> nea.append("b")
+    |> nea.append("c"),
     stream(["a", "b", "c", "-"], Some(4)),
     stream(["a", "b", "c", "-"], None),
   ))

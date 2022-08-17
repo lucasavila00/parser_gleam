@@ -1,5 +1,5 @@
 import parser_gleam/stream.{Stream}
-import parser_gleam/semigroup.{Semigroup}
+import fp2/semigroup.{Semigroup}
 import gleam/option.{Option}
 import gleam/list
 

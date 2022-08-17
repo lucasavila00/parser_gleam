@@ -1,6 +1,6 @@
 import gleam/option.{Option}
-import parser_gleam/eq.{Eq}
-import parser_gleam/list as p_list
+import fp2/eq.{Eq}
+import fp2/list as p_list
 import gleam/list
 
 // -------------------------------------------------------------------------------------

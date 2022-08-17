@@ -1,4 +1,4 @@
-import parser_gleam/eq.{Eq}
+import fp2/eq.{Eq}
 import gleam/list
 
 pub fn get_eq(e: Eq(a)) -> Eq(List(a)) {

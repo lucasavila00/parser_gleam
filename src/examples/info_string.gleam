@@ -5,6 +5,7 @@ import parser_gleam/parse_result.{ParseResult}
 import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/list
+import fp2/non_empty_list as nea
 
 // -------------------------------------------------------------------------------------
 // model
@@ -56,8 +57,15 @@ fn flag() -> Parser(String, Flag) {
 fn named() -> Parser(String, Named) {
   double_dash()
   |> p.chain(fn(_) { p.sep_by1(equals(), identifier()) })
-  |> p.chain(fn(lst) {
-    case list.length(lst) {
+  |> p.chain(fn(nea) {
+    let lst =
+      nea
+      |> nea.to_list()
+
+    case
+      lst
+      |> list.length()
+    {
       2 -> {
         let [name, value] = lst
         case string.length(value) {
@@ -106,8 +114,8 @@ pub fn language_parser() -> Parser(String, Option(String)) {
 
 fn eval_parser() {
   language_parser()
-  |> p.chain(fn(o) {
-    case o {
+  |> p.chain(fn(lang) {
+    case lang {
       None -> p.fail()
       Some(it) -> p.of(it)
     }

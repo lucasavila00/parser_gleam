@@ -1,7 +1,7 @@
 import gleeunit
 import gleeunit/should
-import parser_gleam/list as p_list
-import parser_gleam/eq
+import fp2/list as p_list
+import fp2/eq
 
 pub fn main() {
   gleeunit.main()

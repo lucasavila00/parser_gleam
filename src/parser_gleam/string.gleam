@@ -2,12 +2,13 @@ import parser_gleam/parser.{Parser} as p
 import parser_gleam/parse_result as pr
 import parser_gleam/char.{Char} as c
 import parser_gleam/stream as s
-import parser_gleam/monoid as m
+import fp2/monoid as m
 import gleam/string
 import gleam/int
 import gleam/float
 import gleam/list
 import gleam/option.{None, Option, Some}
+import fp2/non_empty_list as nea
 
 fn char_at(index: Int, s: String) -> Option(Char) {
   // TODO check it
@@ -81,6 +82,7 @@ pub fn many1(parser: Parser(Char, String)) -> Parser(Char, String) {
   p.many1(parser)
   |> p.map(fn(nea) {
     nea
+    |> nea.to_list()
     |> string.join("")
   })
 }
