@@ -1,12 +1,13 @@
 import parser_gleam/stream.{Stream, at_end, get_and_next}
-import parser_gleam/predicate.{Predicate}
+import parser_gleam/predicate.{Predicate, not}
 import parser_gleam/monoid.{Monoid}
-import parser_gleam/function.{Lazy}
+import parser_gleam/semigroup.{Semigroup}
+import parser_gleam/function.{Lazy, identity}
 import parser_gleam/chain_rec.{tail_rec}
 import parser_gleam/parse_result.{
   ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
 }
-import gleam/option.{None, Some}
+import gleam/option.{None, Option, Some}
 import gleam/result
 import gleam/list
 
@@ -116,6 +117,10 @@ pub fn chain(ma: Parser(i, a), f: fn(a) -> Parser(i, b)) {
   seq(ma, f)
 }
 
+pub fn chain_first(ma: Parser(i, a), f: fn(a) -> Parser(i, b)) -> Parser(i, a) {
+  chain(ma, fn(a) { map(f(a), fn(_x) { a }) })
+}
+
 pub fn of(a) -> Parser(i, a) {
   succeed(a)
 }
@@ -141,6 +146,14 @@ pub fn ap_second(fb: Parser(i, b)) {
   fn(fa: Parser(i, a)) -> Parser(i, b) {
     ap(map(fa, fn(_x) { fn(b) { b } }), fb)
   }
+}
+
+pub fn flatten(mma: Parser(i, Parser(i, a))) -> Parser(i, a) {
+  chain(mma, identity)
+}
+
+pub fn zero() -> Parser(i, a) {
+  fail()
 }
 
 type Next(i, a) {
@@ -245,4 +258,98 @@ pub fn sep_by_cut(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, List(b)) {
     many(cut_with(sep, p))
     |> map(fn(tail) { list.append([head], tail) })
   })
+}
+
+pub fn filter(predicate: Predicate(a)) {
+  fn(p: Parser(i, a)) -> Parser(i, a) {
+    fn(i) {
+      p(i)
+      |> result.then(fn(next) {
+        case predicate(next.value) {
+          True -> Ok(next)
+          False -> error(i, None, None)
+        }
+      })
+    }
+  }
+}
+
+pub fn between(left: Parser(i, a), right: Parser(i, a)) {
+  fn(p: Parser(i, b)) -> Parser(i, b) {
+    left
+    |> chain(fn(_x) { p })
+    |> chain_first(fn(_x) { right })
+  }
+}
+
+pub fn surrounded_by(bound: Parser(i, a)) {
+  fn(p: Parser(i, b)) -> Parser(i, b) { between(bound, bound)(p) }
+}
+
+pub fn look_ahead(p: Parser(i, a)) -> Parser(i, a) {
+  fn(i) {
+    p(i)
+    |> result.then(fn(next) { success(next.value, i, i) })
+  }
+}
+
+pub fn take_until(predicate: Predicate(i)) -> Parser(i, List(i)) {
+  predicate
+  |> not
+  |> sat
+  |> many
+}
+
+pub fn optional(parser: Parser(i, a)) -> Parser(i, Option(a)) {
+  parser
+  |> map(Some)
+  |> alt(fn() { succeed(None) })
+}
+
+// TODO: non empty array???
+// TODO: look for other places of NEA
+pub fn many_till(
+  parser: Parser(i, a),
+  terminator: Parser(i, b),
+) -> Parser(i, List(a)) {
+  terminator
+  |> map(fn(_) { [] })
+  |> alt(fn() { many1_till(parser, terminator) })
+}
+
+pub fn many1_till(
+  parser: Parser(i, a),
+  terminator: Parser(i, b),
+) -> Parser(i, List(a)) {
+  parser
+  |> chain(fn(x) {
+    chain_rec(
+      [x],
+      fn(acc) {
+        terminator
+        |> map(fn(_) { Ok(acc) })
+        |> alt(fn() {
+          parser
+          |> map(fn(a) { Error(list.append(acc, [a])) })
+        })
+      },
+    )
+  })
+}
+
+// -------------------------------------------------------------------------------------
+// instances
+// -------------------------------------------------------------------------------------
+
+pub fn get_semigroup(s: Semigroup(a)) -> Semigroup(Parser(i, a)) {
+  Semigroup(fn(x, y) { ap(map(x, fn(x) { fn(y) { s.concat(x, y) } }), y) })
+}
+
+pub fn get_monoid(m: Monoid(a)) -> Monoid(Parser(i, a)) {
+  let Semigroup(concat) =
+    m
+    |> monoid.to_semigroup()
+    |> get_semigroup()
+
+  Monoid(concat, succeed(m.empty))
 }
