@@ -337,25 +337,6 @@ pub fn sep_by_cut(
 
 /// Filters the result of a parser based upon a `Refinement` or a `Predicate`.
 ///
-/// TODO: @example
-/// import { pipe } from 'fp-ts/function'
-/// import { run } from 'parser-ts/code-frame'
-/// import /// as C from 'parser-ts/char'
-/// import /// as P from 'parser-ts/Parser'
-///
-/// const parser = P.expected(
-///   pipe(
-///     P.item<C.Char>(),
-///     P.filter((c) => c !== 'a')
-///   ),
-///  'anything except "a"'
-/// )
-///
-/// run(parser, 'a')
-/// // {  _tag: 'Left', left: '> 1 | a\n    | ^ Expected: anything except "a"' }
-///
-/// run(parser, 'b')
-/// // { _tag: 'Right', right: 'b' }
 pub fn filter(predicate: Predicate(a)) {
   fn(p: Parser(i, a)) -> Parser(i, a) {
     fn(i) {
@@ -388,19 +369,6 @@ pub fn surrounded_by(bound: Parser(i, a)) {
 
 /// Takes a `Parser` and tries to match it without consuming any input.
 ///
-/// TODO: @example
-/// import { run } from 'parser-ts/code-frame'
-/// import /// as P from 'parser-ts/Parser'
-/// import /// as S from 'parser-ts/string'
-///
-/// const parser = S.fold([
-///   S.string('hello '),
-///    P.lookAhead(S.string('world')),
-///    S.string('wor')
-/// ])
-///
-/// run(parser, 'hello world')
-/// // { _tag: 'Right', right: 'hello worldwor' }
 pub fn look_ahead(p: Parser(i, a)) -> Parser(i, a) {
   fn(i) {
     p(i)
@@ -410,15 +378,6 @@ pub fn look_ahead(p: Parser(i, a)) -> Parser(i, a) {
 
 /// Takes a `Predicate` and continues parsing until the given `Predicate` is satisfied.
 ///
-/// TODO: @example
-/// import /// as C from 'parser-ts/char'
-/// import { run } from 'parser-ts/code-frame'
-/// import /// as P from 'parser-ts/Parser'
-///
-/// const parser = P.takeUntil((c: C.Char) => c === 'w')
-///
-/// run(parser, 'hello world')
-/// // { _tag: 'Right', right: [ 'h', 'e', 'l', 'l', 'o', ' ' ] }
 pub fn take_until(predicate: Predicate(i)) -> Parser(i, List(i)) {
   predicate
   |> not
@@ -428,19 +387,6 @@ pub fn take_until(predicate: Predicate(i)) -> Parser(i, List(i)) {
 
 /// Returns `Some<A>` if the specified parser succeeds, otherwise returns `None`.
 ///
-/// TODO: @example
-/// import /// as C from 'parser-ts/char'
-/// import { run } from 'parser-ts/code-frame'
-/// import /// as P from 'parser-ts/Parser'
-///
-/// const a = P.sat((c: C.Char) => c === 'a')
-/// const parser = P.optional(a)
-///
-/// run(parser, 'a')
-/// // { _tag: 'Right', right: { _tag: 'Some', value: 'a' } }
-///
-/// run(parser, 'b')
-/// // { _tag: 'Left', left: { _tag: 'None' } }
 pub fn optional(parser: Parser(i, a)) -> Parser(i, Option(a)) {
   parser
   |> map(Some)
@@ -452,18 +398,6 @@ pub fn optional(parser: Parser(i, a)) -> Parser(i, Option(a)) {
 /// stream, returning a list of the result values of each parse operation as its
 /// result, or the empty list if the parser never succeeded.
 ///
-/// TODO: @example
-/// import /// as C from 'parser-ts/char'
-/// import { run } from 'parser-ts/code-frame'
-/// import /// as P from 'parser-ts/Parser'
-///
-/// const parser = P.manyTill(C.letter, C.char('-'))
-///
-/// run(parser, 'abc-')
-/// // { _tag: 'Right', right: [ 'a', 'b', 'c' ] }
-///
-/// run(parser, '-')
-/// // { _tag: 'Right', right: [] }
 pub fn many_till(
   parser: Parser(i, a),
   terminator: Parser(i, b),
@@ -480,18 +414,6 @@ pub fn many_till(
 /// requires the value `parser` to match at least once before the `terminator`
 /// parser. The resulting list is thus guaranteed to contain at least one value.
 ///
-/// TODO: @example
-/// import /// as C from 'parser-ts/char'
-/// import { run } from 'parser-ts/code-frame'
-/// import /// as P from 'parser-ts/Parser'
-///
-/// const parser = P.many1Till(C.letter, C.char('-'))
-///
-/// run(parser, 'abc-')
-/// // { _tag: 'Right', right: [ 'a', 'b', 'c' ] }
-///
-/// run(parser, '-')
-/// // { _tag: 'Left', left: '> 1 | -\n    | ^ Expected: a letter' }
 pub fn many1_till(
   parser: Parser(i, a),
   terminator: Parser(i, b),
