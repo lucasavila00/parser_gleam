@@ -33,6 +33,7 @@ fn slice(index: Int, s: String) -> String {
 // constructors
 // -------------------------------------------------------------------------------------
 
+/// Matches the exact string provided.
 pub fn string(s: String) -> Parser(Char, String) {
   p.expected(
     p.chain_rec(
@@ -62,6 +63,7 @@ pub fn string(s: String) -> Parser(Char, String) {
 // destructors
 // -------------------------------------------------------------------------------------
 
+/// Matches one of a list of strings.
 pub fn fold(ass: List(Parser(i, String))) -> Parser(i, String) {
   m.concat_all(p.get_monoid(m.monoid_string()))(ass)
 }
@@ -74,10 +76,14 @@ pub fn maybe(p: Parser(i, String)) -> Parser(i, String) {
   p.maybe(m.monoid_string())(p)
 }
 
+/// Matches the given parser zero or more times, returning a string of the
+/// entire match
 pub fn many(parser: Parser(Char, String)) -> Parser(Char, String) {
   maybe(many1(parser))
 }
 
+/// Matches the given parser zero or more times, returning a string of the
+/// entire match
 pub fn many1(parser: Parser(Char, String)) -> Parser(Char, String) {
   p.many1(parser)
   |> p.map(fn(nea) {
@@ -87,18 +93,22 @@ pub fn many1(parser: Parser(Char, String)) -> Parser(Char, String) {
   })
 }
 
+/// Matches zero or more whitespace characters.
 pub fn spaces() -> Parser(Char, String) {
   c.many(c.space())
 }
 
+/// Matches one or more whitespace characters.
 pub fn spaces1() -> Parser(Char, String) {
   c.many1(c.space())
 }
 
+/// Matches zero or more non-whitespace characters.
 pub fn not_spaces() -> Parser(Char, String) {
   c.many(c.not_space())
 }
 
+/// Matches one or more non-whitespace characters.
 pub fn not_spaces1() -> Parser(Char, String) {
   c.many1(c.not_space())
 }
@@ -143,11 +153,15 @@ pub fn float() -> Parser(Char, Float) {
   p.expected(exp, "a float")
 }
 
+/// Parses a double quoted string, with support for escaping double quotes
+/// inside it, and returns the inner string. Does not perform any other form
+/// of string escaping.
 pub fn double_quoted_string() -> Parser(String, String) {
   many(p.either(string("\\\""), fn() { c.not_char("\"") }))
   |> p.surrounded_by(c.char("\""))
 }
 
+/// Creates a stream from `string` and runs the parser.
 pub fn run(str: String) {
   fn(p: Parser(Char, a)) -> pr.ParseResult(Char, a) {
     p(s.stream(
