@@ -7,7 +7,6 @@ import parser_gleam/parse_result.{error, success}
 import parser_gleam/stream.{stream} as st
 import gleam/option.{None, Some}
 import gleam/string
-import gleam/io
 
 pub fn main() {
   gleeunit.main()
@@ -18,7 +17,6 @@ pub fn parser_eof_test() {
 
   parser
   |> s.run("")
-  |> io.debug()
   |> should.equal(success(Nil, stream([], None), stream([], None)))
 
   parser
