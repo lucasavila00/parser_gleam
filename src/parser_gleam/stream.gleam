@@ -1,6 +1,6 @@
 import gleam/option.{Option}
-import fp2/eq.{Eq}
-import fp2/list as p_list
+import fp_gl/eq.{Eq}
+import fp_gl/flist
 import gleam/list
 
 // -------------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ pub fn get_and_next(s: Stream(a)) -> Option(ItAndNext(a)) {
 
 pub fn get_eq(e: Eq(a)) -> Eq(Stream(a)) {
   eq.from_equals(fn(x: Stream(a), y: Stream(a)) {
-    let ea = p_list.get_eq(e)
+    let ea = flist.get_eq(e)
     x.cursor == y.cursor && ea.equals(x.buffer, y.buffer)
   })
 }

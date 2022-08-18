@@ -5,7 +5,7 @@ import parser_gleam/parse_result.{ParseResult}
 import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/list
-import fp2/non_empty_list as nea
+import fp_gl/non_empty_list as nea
 
 // -------------------------------------------------------------------------------------
 // model

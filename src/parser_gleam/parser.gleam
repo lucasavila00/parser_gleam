@@ -1,10 +1,9 @@
 import parser_gleam/stream.{Stream, at_end, get_and_next}
-import fp2/non_empty_list.{NonEmptyList} as nea
-import fp2/predicate.{Predicate, not}
-import fp2/monoid.{Monoid}
-import fp2/semigroup.{Semigroup}
-import fp2/function.{Lazy, identity}
-import fp2/chain_rec.{tail_rec}
+import fp_gl/non_empty_list.{NonEmptyList} as nea
+import fp_gl/predicate.{Predicate, not}
+import fp_gl/models.{Monoid, Semigroup}
+import fp_gl/function.{Lazy, identity}
+import fp_gl/chain_rec.{tail_rec}
 import parser_gleam/parse_result.{
   ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
 }
@@ -442,10 +441,14 @@ pub fn get_semigroup(s: Semigroup(a)) -> Semigroup(Parser(i, a)) {
   Semigroup(fn(x, y) { ap(map(x, fn(x) { fn(y) { s.concat(x, y) } }), y) })
 }
 
+fn monoid_to_semigroup(m: Monoid(a)) -> Semigroup(a) {
+  Semigroup(m.concat)
+}
+
 pub fn get_monoid(m: Monoid(a)) -> Monoid(Parser(i, a)) {
   let Semigroup(concat) =
     m
-    |> monoid.to_semigroup()
+    |> monoid_to_semigroup()
     |> get_semigroup()
 
   Monoid(concat, succeed(m.empty))

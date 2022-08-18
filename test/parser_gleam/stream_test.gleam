@@ -1,7 +1,7 @@
 import gleeunit
 import gleeunit/should
 import parser_gleam/stream as s
-import fp2/eq
+import fp_gl/eq
 import gleam/option.{None, Some}
 
 pub fn main() {

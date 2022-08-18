@@ -2,13 +2,14 @@ import parser_gleam/parser.{Parser} as p
 import parser_gleam/parse_result as pr
 import parser_gleam/char.{Char} as c
 import parser_gleam/stream as s
-import fp2/monoid as m
+import fp_gl/monoid as m
 import gleam/string
 import gleam/int
 import gleam/float
 import gleam/list
 import gleam/option.{None, Option, Some}
-import fp2/non_empty_list as nea
+import fp_gl/non_empty_list as nea
+import fp_gl/fstring
 
 fn char_at(index: Int, s: String) -> Option(Char) {
   let r =
@@ -67,7 +68,7 @@ pub fn one_of(lst: List(String)) -> Parser(Char, String) {
 /// Matches one of a list of strings.
 pub fn fold(ass: List(Parser(i, String))) -> Parser(i, String) {
   ass
-  |> m.concat_all(p.get_monoid(m.monoid_string()))
+  |> m.concat_all(p.get_monoid(fstring.monoid()))
 }
 
 // -------------------------------------------------------------------------------------
@@ -75,7 +76,7 @@ pub fn fold(ass: List(Parser(i, String))) -> Parser(i, String) {
 // -------------------------------------------------------------------------------------
 
 pub fn maybe(p: Parser(i, String)) -> Parser(i, String) {
-  p.maybe(m.monoid_string())(p)
+  p.maybe(fstring.monoid())(p)
 }
 
 /// Matches the given parser zero or more times, returning a string of the

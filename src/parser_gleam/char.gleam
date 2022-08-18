@@ -1,12 +1,12 @@
 import parser_gleam/parser.{Parser} as p
 import gleam/string
 import gleam/regex
-import fp2/monoid.{monoid_string}
-import fp2/predicate.{not}
-import fp2/non_empty_list as nea
+import fp_gl/fstring
+import fp_gl/predicate.{not}
+import fp_gl/non_empty_list as nea
 
 fn maybe() {
-  p.maybe(monoid_string())
+  p.maybe(fstring.monoid())
 }
 
 // -------------------------------------------------------------------------------------

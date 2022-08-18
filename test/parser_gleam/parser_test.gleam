@@ -1,7 +1,7 @@
 import gleeunit
 import gleeunit/should
 import parser_gleam/char as c
-import fp2/non_empty_list as nea
+import fp_gl/non_empty_list as nea
 import parser_gleam/parser as p
 import parser_gleam/string as s
 import parser_gleam/parse_result.{error, success}
