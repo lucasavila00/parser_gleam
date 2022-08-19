@@ -10,29 +10,29 @@ import fp_gl/non_empty_list as nel
 // gleam - model
 // -------------------------------------------------------------------------------------
 
-pub type IgnoredCode {
-  IgnoredCode(content: String)
-}
-
 pub type TypeConstructorArgument {
   TypeConstructorArgument(key: String, value: String)
 }
 
-pub type TypeConstructor {
-  TypeConstructor(name: String, args: List(TypeConstructorArgument))
+pub type RecordConstructor {
+  RecordConstructor(name: String, args: List(TypeConstructorArgument))
 }
 
-pub type TypeDeclaration {
-  TypeDeclaration(name: String, constructors: List(TypeConstructor))
+pub type XCustomType {
+  XCustomType(name: String, constructors: List(RecordConstructor))
 }
 
 // -------------------------------------------------------------------------------------
 // parser - model
 // -------------------------------------------------------------------------------------
 
+pub type IgnoredCode {
+  IgnoredCode(content: String)
+}
+
 pub type AstNode {
   NodeIgnoredCode(it: IgnoredCode)
-  NodeTypeDeclaration(it: TypeDeclaration)
+  NodeXCustomType(it: XCustomType)
 }
 
 pub type Ast =
@@ -104,7 +104,7 @@ pub fn type_argment_parser() -> Parser(String, TypeConstructorArgument) {
   })
 }
 
-fn type_constructor_name() {
+fn record_constructor_name() {
   p.many1_till(
     p.item(),
     s.spaces1()
@@ -114,7 +114,7 @@ fn type_constructor_name() {
   )
 }
 
-fn type_constructor_arguments() {
+fn record_constructor_arguments() {
   p.either(
     c.char("(")
     |> p.chain(fn(_) {
@@ -130,38 +130,38 @@ fn type_constructor_arguments() {
   )
 }
 
-pub fn type_constructor_parser() -> Parser(String, TypeConstructor) {
-  type_constructor_name()
+pub fn record_constructor_parser() -> Parser(String, RecordConstructor) {
+  record_constructor_name()
   |> p.chain(fn(name) {
     s.spaces()
     |> p.chain(fn(_) {
-      type_constructor_arguments()
-      |> p.map(fn(args) { TypeConstructor(name: to_name(name), args: args) })
+      record_constructor_arguments()
+      |> p.map(fn(args) { RecordConstructor(name: to_name(name), args: args) })
     })
   })
 }
 
-fn type_declaration_parser() -> Parser(String, TypeDeclaration) {
+fn custom_type_parser() -> Parser(String, XCustomType) {
   type_opener()
   |> p.chain(fn(_) {
     p.many1_till(p.item(), c.char("{"))
     |> p.chain(fn(name) {
       s.spaces()
       |> p.chain(fn(_) {
-        p.many_till(type_constructor_parser(), c.char("}"))
+        p.many_till(record_constructor_parser(), c.char("}"))
         |> p.map(fn(constructors) {
-          TypeDeclaration(name: to_name(name), constructors: constructors)
+          XCustomType(name: to_name(name), constructors: constructors)
         })
       })
     })
   })
 }
 
-fn block_parser() -> Parser(String, #(IgnoredCode, Option(TypeDeclaration))) {
+fn block_parser() -> Parser(String, #(IgnoredCode, Option(XCustomType))) {
   ignored_code_parser()
   |> p.chain(fn(code) {
-    p.optional(type_declaration_parser())
-    |> p.map(fn(type_declaration) { #(code, type_declaration) })
+    p.optional(custom_type_parser())
+    |> p.map(fn(custom_type) { #(code, custom_type) })
   })
 }
 
@@ -169,7 +169,7 @@ fn block_to_ast_nodes(block) {
   let #(code, typ) = block
   case typ {
     None -> [NodeIgnoredCode(code)]
-    Some(typ) -> [NodeIgnoredCode(code), NodeTypeDeclaration(typ)]
+    Some(typ) -> [NodeIgnoredCode(code), NodeXCustomType(typ)]
   }
 }
 
@@ -183,14 +183,14 @@ pub fn ast_parser() -> Parser(String, Ast) {
 // utils
 // -------------------------------------------------------------------------------------
 
-pub fn filter_type_declarations(ast: Ast) -> List(TypeDeclaration) {
+pub fn filter_custom_types(ast: Ast) -> List(XCustomType) {
   ast
   |> list.fold(
     [],
     fn(p, c) {
       case c {
         NodeIgnoredCode(_) -> p
-        NodeTypeDeclaration(it) -> list.append(p, [it])
+        NodeXCustomType(it) -> list.append(p, [it])
       }
     },
   )

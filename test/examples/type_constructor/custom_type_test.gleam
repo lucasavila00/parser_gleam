@@ -1,12 +1,12 @@
 import gleeunit/should
-import examples/type_declaration.{
-  TypeConstructor, TypeConstructorArgument, TypeDeclaration, ast_parser,
+import examples/custom_type.{
+  RecordConstructor, TypeConstructorArgument, XCustomType, ast_parser,
 }
 import parser_gleam/string as s
 import gleam/list
 import gleam/string
 
-fn get_type_declarations(str: String) {
+fn get_custom_types(str: String) {
   assert Ok(r) =
     ast_parser()
     |> s.run(str)
@@ -16,20 +16,20 @@ fn get_type_declarations(str: String) {
     |> string.length() == r.next.cursor
 
   r.value
-  |> type_declaration.filter_type_declarations()
+  |> custom_type.filter_custom_types()
 }
 
 pub fn empty_str_test() {
   let str = ""
 
-  get_type_declarations(str)
+  get_custom_types(str)
   |> should.equal([])
 }
 
 pub fn ignores_non_pub_test() {
   let str = "type A{A}"
 
-  get_type_declarations(str)
+  get_custom_types(str)
   |> should.equal([])
 }
 
@@ -44,11 +44,11 @@ pub fn one_constructor_no_args_test() {
 
   [str1, str2, str3, str4, str5, str6, str7]
   |> list.map(fn(str) {
-    get_type_declarations(str)
+    get_custom_types(str)
     |> should.equal([
-      TypeDeclaration(
+      XCustomType(
         name: "A",
-        constructors: [TypeConstructor(name: "A", args: [])],
+        constructors: [RecordConstructor(name: "A", args: [])],
       ),
     ])
   })
@@ -59,13 +59,13 @@ pub fn two_constructors_no_args_test() {
 
   [str]
   |> list.map(fn(str) {
-    get_type_declarations(str)
+    get_custom_types(str)
     |> should.equal([
-      TypeDeclaration(
+      XCustomType(
         name: "A",
         constructors: [
-          TypeConstructor(name: "A", args: []),
-          TypeConstructor(name: "B", args: []),
+          RecordConstructor(name: "A", args: []),
+          RecordConstructor(name: "B", args: []),
         ],
       ),
     ])
@@ -75,12 +75,12 @@ pub fn two_constructors_no_args_test() {
 pub fn one_constructor_with_args_test() {
   let str = "pub type A{B(c: String)}"
 
-  get_type_declarations(str)
+  get_custom_types(str)
   |> should.equal([
-    TypeDeclaration(
+    XCustomType(
       name: "A",
       constructors: [
-        TypeConstructor(
+        RecordConstructor(
           name: "B",
           args: [TypeConstructorArgument(key: "c", value: "String")],
         ),

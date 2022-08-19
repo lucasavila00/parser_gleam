@@ -1,5 +1,5 @@
 import gleeunit/should
-import examples/type_declaration.{TypeConstructorArgument, type_argment_parser}
+import examples/custom_type.{TypeConstructorArgument, type_argment_parser}
 import parser_gleam/string as s
 import gleam/list
 import gleam/string
