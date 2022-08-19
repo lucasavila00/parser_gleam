@@ -10,12 +10,20 @@ import fp_gl/non_empty_list as nel
 // gleam - model
 // -------------------------------------------------------------------------------------
 
-pub type TypeConstructorArgument {
-  TypeConstructorArgument(key: String, value: String)
+pub type TypeAst {
+  Constructor(module: Option(String), name: String, arguments: TypeAst)
+  Fn(arguments: List(TypeAst), return_: TypeAst)
+  Var(name: String)
+  Tuple(elems: List(TypeAst))
+  Hole(name: String)
+}
+
+pub type RecordConstructorArg {
+  RecordConstructorArg(label: String, ast: String)
 }
 
 pub type RecordConstructor {
-  RecordConstructor(name: String, args: List(TypeConstructorArgument))
+  RecordConstructor(name: String, arguments: List(RecordConstructorArg))
 }
 
 pub type XCustomType {
@@ -89,7 +97,10 @@ fn parse_type_argument_value() {
   )
 }
 
-pub fn type_argment_parser() -> Parser(String, TypeConstructorArgument) {
+pub fn record_constructor_argment_parser() -> Parser(
+  String,
+  RecordConstructorArg,
+) {
   p.many1_till(p.item(), s.string(": "))
   |> p.chain(fn(name) {
     p.many1_till(
@@ -99,7 +110,7 @@ pub fn type_argment_parser() -> Parser(String, TypeConstructorArgument) {
       |> p.alt(fn() { string_eof() }),
     )
     |> p.map(fn(value) {
-      TypeConstructorArgument(key: to_name(name), value: to_name(value))
+      RecordConstructorArg(label: to_name(name), ast: to_name(value))
     })
   })
 }
@@ -119,7 +130,7 @@ fn record_constructor_arguments() {
     c.char("(")
     |> p.chain(fn(_) {
       p.many1_till(
-        type_argment_parser(),
+        record_constructor_argment_parser(),
         c.char(")")
         |> p.chain(fn(_) { s.spaces() })
         |> p.alt(fn() { p.look_ahead(c.char("}")) }),
@@ -136,7 +147,9 @@ pub fn record_constructor_parser() -> Parser(String, RecordConstructor) {
     s.spaces()
     |> p.chain(fn(_) {
       record_constructor_arguments()
-      |> p.map(fn(args) { RecordConstructor(name: to_name(name), args: args) })
+      |> p.map(fn(args) {
+        RecordConstructor(name: to_name(name), arguments: args)
+      })
     })
   })
 }

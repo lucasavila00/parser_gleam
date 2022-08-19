@@ -1,6 +1,6 @@
 import gleeunit/should
 import examples/custom_type.{
-  RecordConstructor, TypeConstructorArgument, XCustomType, ast_parser,
+  RecordConstructor, RecordConstructorArg, XCustomType, ast_parser,
 }
 import parser_gleam/string as s
 import gleam/list
@@ -48,7 +48,7 @@ pub fn one_constructor_no_args_test() {
     |> should.equal([
       XCustomType(
         name: "A",
-        constructors: [RecordConstructor(name: "A", args: [])],
+        constructors: [RecordConstructor(name: "A", arguments: [])],
       ),
     ])
   })
@@ -64,8 +64,8 @@ pub fn two_constructors_no_args_test() {
       XCustomType(
         name: "A",
         constructors: [
-          RecordConstructor(name: "A", args: []),
-          RecordConstructor(name: "B", args: []),
+          RecordConstructor(name: "A", arguments: []),
+          RecordConstructor(name: "B", arguments: []),
         ],
       ),
     ])
@@ -82,7 +82,7 @@ pub fn one_constructor_with_args_test() {
       constructors: [
         RecordConstructor(
           name: "B",
-          args: [TypeConstructorArgument(key: "c", value: "String")],
+          arguments: [RecordConstructorArg(label: "c", ast: "String")],
         ),
       ],
     ),

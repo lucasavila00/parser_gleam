@@ -1,6 +1,6 @@
 import gleeunit/should
 import examples/custom_type.{
-  RecordConstructor, TypeConstructorArgument, record_constructor_parser,
+  RecordConstructor, RecordConstructorArg, record_constructor_parser,
 }
 import parser_gleam/string as s
 import gleam/list
@@ -22,7 +22,7 @@ pub fn no_args_test() {
   ["A", "A ", "A\n", "A  ", "A\n\n"]
   |> list.map(fn(str) {
     get_constructor(str)
-    |> should.equal(RecordConstructor(name: "A", args: []))
+    |> should.equal(RecordConstructor(name: "A", arguments: []))
   })
 }
 
@@ -36,7 +36,7 @@ pub fn with_one_arg_test() {
     get_constructor(str)
     |> should.equal(RecordConstructor(
       name: "A",
-      args: [TypeConstructorArgument(key: "a", value: "String")],
+      arguments: [RecordConstructorArg(label: "a", ast: "String")],
     ))
   })
 }
@@ -47,10 +47,10 @@ pub fn with_args_test() {
     get_constructor(str)
     |> should.equal(RecordConstructor(
       name: "A",
-      args: [
-        TypeConstructorArgument(key: "a", value: "String"),
-        TypeConstructorArgument(key: "b", value: "Int"),
-        TypeConstructorArgument(key: "c", value: "Bool"),
+      arguments: [
+        RecordConstructorArg(label: "a", ast: "String"),
+        RecordConstructorArg(label: "b", ast: "Int"),
+        RecordConstructorArg(label: "c", ast: "Bool"),
       ],
     ))
   })
@@ -62,10 +62,10 @@ pub fn with_generic_args_test() {
     get_constructor(str)
     |> should.equal(RecordConstructor(
       name: "A",
-      args: [
-        TypeConstructorArgument(key: "a", value: "String"),
-        TypeConstructorArgument(key: "b", value: "I(Int)"),
-        TypeConstructorArgument(key: "c", value: "B(Bool)"),
+      arguments: [
+        RecordConstructorArg(label: "a", ast: "String"),
+        RecordConstructorArg(label: "b", ast: "I(Int)"),
+        RecordConstructorArg(label: "c", ast: "B(Bool)"),
       ],
     ))
   })
@@ -77,10 +77,10 @@ pub fn with_generic_args2_test() {
     get_constructor(str)
     |> should.equal(RecordConstructor(
       name: "A",
-      args: [
-        TypeConstructorArgument(key: "a", value: "String"),
-        TypeConstructorArgument(key: "b", value: "I(Int)"),
-        TypeConstructorArgument(key: "c", value: "B(B(Bool))"),
+      arguments: [
+        RecordConstructorArg(label: "a", ast: "String"),
+        RecordConstructorArg(label: "b", ast: "I(Int)"),
+        RecordConstructorArg(label: "c", ast: "B(B(Bool))"),
       ],
     ))
   })
