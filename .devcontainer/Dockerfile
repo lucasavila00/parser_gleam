@@ -1,0 +1,17 @@
+FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0-18-bullseye
+
+RUN wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb
+RUN dpkg -i erlang-solutions_2.0_all.deb
+RUN apt-get update
+RUN apt-get -y install --no-install-recommends esl-erlang
+
+
+RUN wget https://github.com/gleam-lang/gleam/releases/download/nightly/gleam-nightly-linux-amd64.tar.gz
+RUN mkdir -p /usr/local/gleam && tar -C /usr/local/gleam -xzf gleam-nightly-linux-amd64.tar.gz
+ENV PATH=$PATH:/usr/local/gleam
+RUN rm -rf gleam-nightly-linux-amd64.tar.gz
+
+RUN wget https://s3.amazonaws.com/rebar3/rebar3
+RUN mkdir -p /usr/local/rebar3 && cp ./rebar3 /usr/local/rebar3/rebar3
+ENV PATH=$PATH:/usr/local/rebar3
+RUN chmod +x /usr/local/rebar3/rebar3
