@@ -1,6 +1,6 @@
 import gleam/io
 import examples/toml.{
-  Node, VArray, VBoolean, VDatetime, VInteger, toml_doc_parser,
+  Node, Table, VArray, VBoolean, VDatetime, VInteger, toml_doc_parser,
 }
 import parser_gleam/string as s
 import gleam/json.{Json}
@@ -31,18 +31,27 @@ fn with_type_info(type_: String, value: String) {
   |> json.object()
 }
 
+fn to_json_obj(tbl: Table) -> Json {
+  tbl
+  |> list.map(fn(it) {
+    let #(key, node) = it
+    #(key, node_to_json(node))
+  })
+  |> json.object()
+}
+
 fn node_to_json(node: Node) -> Json {
   case node {
-    toml.VTable(it) -> todo
-    toml.VTArray(it) -> todo
-    toml.VString(it) -> json.string(it)
+    toml.VTable(it) -> to_json_obj(it)
+    toml.VTArray(it) -> json.array(it, to_json_obj)
+    toml.VString(it) -> with_type_info("string", it)
     toml.VInteger(it) ->
       with_type_info(
         "integer",
         it
         |> int.to_string(),
       )
-    toml.VFloat(it) -> json.float(it)
+    toml.VFloat(it) -> todo
     toml.VBoolean(it) ->
       with_type_info(
         "bool",
@@ -50,23 +59,13 @@ fn node_to_json(node: Node) -> Json {
         |> json.bool()
         |> json.to_string(),
       )
-    toml.VDatetime(it) -> json.string(it)
+    toml.VDatetime(it) -> todo
     toml.VArray(it) -> todo
   }
 }
 
-fn to_json_list(toml: List(#(String, Node))) -> List(#(String, Json)) {
-  toml
-  |> list.map(fn(it) {
-    let #(key, node) = it
-
-    #(key, node_to_json(node))
-  })
-}
-
-fn serialize_toml(toml: List(#(String, Node))) -> String {
-  to_json_list(toml)
-  |> json.object()
+fn serialize_toml(toml: Table) -> String {
+  to_json_obj(toml)
   |> json.to_string()
 }
 

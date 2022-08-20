@@ -5,6 +5,7 @@ import gleam/io
 import gleam/string
 import gleam/list
 import gleam/int
+import gleam/set
 import fp_gl/non_empty_list as nel
 
 // -------------------------------------------------------------------------------------
@@ -26,7 +27,7 @@ pub type Node {
   VArray(List(Node))
 }
 
-type Table =
+pub type Table =
   List(#(String, Node))
 
 // -------------------------------------------------------------------------------------
@@ -54,7 +55,17 @@ fn end_of_line() {
 fn comment() {
   c.char("#")
   |> p.chain(fn(_) {
-    p.many_till(p.item(), p.sat(fn(it) { it != "\n" }))
+    p.many_till(
+      p.item(),
+      p.alt(
+        p.sat(fn(it) { it == "\n" })
+        |> p.map(fn(_) { Nil }),
+        fn() {
+          p.look_ahead(p.eof())
+          |> p.map(fn(_) { Nil })
+        },
+      ),
+    )
     |> p.map(fn(_) { Nil })
   })
 }
@@ -144,7 +155,7 @@ fn named_section() -> TomlParser(NamedSection) {
   })
 }
 
-fn table_header() -> TomlParser(List(String)) {
+pub fn table_header() -> TomlParser(List(String)) {
   header_value()
   |> p.between(c.char("["), c.char("]"))
 }
@@ -155,9 +166,16 @@ fn table_array_header() -> TomlParser(List(String)) {
 }
 
 fn header_value() -> TomlParser(List(String)) {
-  p.many1(key_char())
-  |> p.sep_by1(c.char("."))
-  |> p.map(nel.to_list)
+  p.sep_by1(c.char("."), p.many1(key_char()))
+  |> p.map(fn(it) {
+    it
+    |> nel.to_list()
+    |> list.map(fn(it) {
+      it
+      |> nel.to_list()
+      |> string.join("")
+    })
+  })
 }
 
 fn value() -> TomlParser(Node) {
@@ -515,8 +533,103 @@ fn esc_seq() -> TomlParser(c.Char) {
   //   TODO unicode
 }
 
+fn table_to_set(it: Table) {
+  it
+  |> list.map(fn(i) {
+    let #(k, _v) = i
+    k
+  })
+  |> set.from_list()
+}
+
+/// Merge two tables, resulting in an error when overlapping keys are
+/// found ('Left' will contain those keys).  When no overlapping keys are
+/// found the result will contain the union of both tables in a 'Right'.
+fn merge(existing: Table, new: Table) -> Either(List(String), Table) {
+  case
+    table_to_set(existing)
+    |> set.intersection(table_to_set(new))
+    |> set.to_list()
+  {
+    [] -> Right(list.append(existing, new))
+    ds -> Left(ds)
+  }
+}
+
+fn list_init(it: List(Table)) -> List(Table) {
+  // TODO optimize
+  assert Ok(init) =
+    it
+    |> list.reverse()
+    |> list.rest()
+
+  init
+  |> list.reverse()
+}
+
+fn insert_named_section(top_table: Table, named_sections: NamedSection) -> Table {
+  case named_sections {
+    #([], _node) -> todo
+    // In case 'name' is final (a top-level name)
+    #([name], node) ->
+      case
+        top_table
+        |> list.key_find(name)
+      {
+        Error(_) ->
+          top_table
+          |> list.key_set(name, node)
+        Ok(VTable(t)) ->
+          case node {
+            VTable(nt) ->
+              case merge(t, nt) {
+                Left(ds) -> todo
+                Right(r) ->
+                  top_table
+                  |> list.key_set(name, VTable(r))
+              }
+            _ -> todo
+          }
+        Ok(VTArray(a)) ->
+          case node {
+            VTArray(na) ->
+              top_table
+              |> list.key_set(name, VTArray(list.append(a, na)))
+            _ -> todo
+          }
+        Ok(_) -> todo
+      }
+
+    // In case 'name' is not final (not a top-level name)
+    #([name, ..ns], node) ->
+      case
+        top_table
+        |> list.key_find(name)
+      {
+        Error(_) -> {
+          let tbl = insert_named_section([], #(ns, node))
+          top_table
+          |> list.key_set(name, VTable(tbl))
+        }
+        Ok(VTable(t)) -> {
+          let tbl = insert_named_section(t, #(ns, node))
+          top_table
+          |> list.key_set(name, VTable(tbl))
+        }
+        Ok(VTArray(a)) -> {
+          assert Ok(last) = list.last(a)
+          let tbl = insert_named_section(last, #(ns, node))
+          top_table
+          |> list.key_set(name, VTArray(list.append(list_init(a), [tbl])))
+        }
+        Ok(_) -> todo
+      }
+  }
+}
+
 fn load_into_top_table(top_table: Table, named_sections: List(NamedSection)) {
-  top_table
+  named_sections
+  |> list.fold(top_table, fn(p, c) { insert_named_section(p, c) })
 }
 
 pub fn toml_doc_parser() -> TomlParser(Table) {
