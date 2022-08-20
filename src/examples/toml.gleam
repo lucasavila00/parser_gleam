@@ -3,6 +3,7 @@ import parser_gleam/char as c
 import parser_gleam/string as s
 import gleam/io
 import gleam/string
+import gleam/list
 import gleam/int
 import fp_gl/non_empty_list as nel
 
@@ -39,13 +40,12 @@ type TomlParser(a) =
 // parsers
 // -------------------------------------------------------------------------------------
 
-// Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n' or 0x0D a.k.a. '\r'.
-
 /// Results in 'True' for whitespace chars, tab or space, according to spec.
 fn is_whitespace() {
   s.one_of([" ", "\t"])
 }
 
+// Parse an EOL, as per TOML spec this is 0x0A a.k.a. '\n' or 0x0D a.k.a. '\r'.
 fn end_of_line() {
   s.one_of(["\n", "\r\n"])
   |> p.map(fn(_) { Nil })
@@ -93,6 +93,7 @@ fn assignment() -> TomlParser(#(String, Node)) {
 }
 
 fn inline_table() -> TomlParser(Node) {
+  // TODO fix it
   p.fail()
 }
 
@@ -116,12 +117,16 @@ type NamedSection =
   #(List(String), Node)
 
 fn named_section() -> TomlParser(NamedSection) {
-  table_header()
-  |> p.map(Left)
-  |> p.alt(fn() {
+  let left =
+    table_header()
+    |> p.map(Left)
+
+  let right =
     table_array_header()
     |> p.map(Right)
-  })
+
+  left
+  |> p.alt(fn() { right })
   |> p.chain(fn(either_hdr) {
     skip_blanks()
     |> p.chain(fn(_) {
@@ -228,39 +233,53 @@ fn any_str_s() -> TomlParser(String) {
   |> p.alt(literal_str)
 }
 
-fn basic_str() -> TomlParser(String) {
-  p.fail()
+pub fn basic_str() -> TomlParser(String) {
+  let str_char =
+    esc_seq()
+    |> p.alt(fn() { c.not_one_of("\"") })
+  let d_quote = c.char("\"")
+  p.many(str_char)
+  |> p.between(d_quote, d_quote)
+  |> p.map(fn(st) {
+    st
+    |> string.join("")
+  })
 }
 
 fn multi_basic_str() -> TomlParser(String) {
-  let esc_white_space =
-    p.many(
-      c.char("\\")
-      |> p.chain(fn(_) {
-        c.char("\n")
-        |> p.chain(fn(_) { s.one_of([" ", "\t", "\n"]) })
-      }),
-    )
+  p.fail()
+  //   let esc_white_space =
+  //     p.many(
+  //       c.char("\\")
+  //       |> p.chain(fn(_) {
+  //         c.char("\n")
+  //         |> p.chain(fn(_) { s.one_of([" ", "\t", "\n"]) })
+  //       }),
+  //     )
 
-  let d_quote_3 = s.string("\"\"\"")
-  let open_d_quote_3 =
-    d_quote_3
-    |> p.chain_first(fn(_) { esc_white_space })
-    |> p.alt(fn() { d_quote_3 })
+  //   let d_quote_3 = s.string("\"\"\"")
+  //   let open_d_quote_3 =
+  //     d_quote_3
+  //     |> p.chain_first(fn(_) { esc_white_space })
+  //     |> p.alt(fn() { d_quote_3 })
 
-  let str_char =
-    esc_seq()
-    |> p.chain_first(fn(_) { esc_white_space })
+  //   let str_char =
+  //     esc_seq()
+  //     |> p.chain_first(fn(_) { esc_white_space })
 
-  open_d_quote_3
-  |> p.chain(fn(_) { p.fail() })
+  //   open_d_quote_3
+  //   |> p.chain(fn(_) { p.fail() })
+
+  // TODO fix it
 }
 
 fn literal_str() -> TomlParser(String) {
+  // TODO fix it
   p.fail()
 }
 
 fn multi_literal_str() -> TomlParser(String) {
+  // TODO fix it
   p.fail()
 }
 
@@ -275,78 +294,223 @@ fn datetime() -> TomlParser(Node) {
 }
 
 fn float() -> TomlParser(Node) {
-  let sign =
-    s.string("-")
-    |> p.alt(fn() {
-      c.char("+")
-      |> p.map(fn(_) { "" })
-    })
+  //   let sign =
+  //     s.string("-")
+  //     |> p.alt(fn() {
+  //       c.char("+")
+  //       |> p.map(fn(_) { "" })
+  //     })
 
-  let uint_str =
+  //   let uint_str =
+  //     c.digit()
+  //     |> p.chain(fn(d) {
+  //       p.many(
+  //         p.optional(c.char("_"))
+  //         |> p.chain(fn(_) { c.digit() }),
+  //       )
+  //       |> p.map(fn(ds) { [d, ..ds] })
+  //     })
+
+  //   let int_str =
+  //     sign
+  //     |> p.chain(fn(s) {
+  //       uint_str
+  //       |> p.map(fn(u) { [s, ..u] })
+  //     })
+  // TODO fix it
+  p.fail()
+}
+
+fn signed() {
+  s.string("-")
+  |> p.alt(fn() { c.char("+") })
+  |> p.alt(fn() { p.of("") })
+}
+
+fn integer_base_10() -> TomlParser(Node) {
+  signed()
+  |> p.chain(fn(sign) {
     c.digit()
     |> p.chain(fn(d) {
       p.many(
         p.optional(c.char("_"))
         |> p.chain(fn(_) { c.digit() }),
       )
+      |> p.map(fn(ds) { [sign, d, ..ds] })
+    })
+    |> p.chain(fn(it) {
+      let int_parsed =
+        it
+        |> string.join("")
+        |> int.parse()
+
+      case int_parsed {
+        Ok(it) -> p.of(VInteger(it))
+        Error(_) -> p.fail()
+      }
+    })
+  })
+}
+
+fn flatten_result_list(it: List(Result(a, b))) {
+  it
+  |> list.fold_right(
+    [],
+    fn(p, c) {
+      case c {
+        Error(_) -> p
+        Ok(c) -> [c, ..p]
+      }
+    },
+  )
+}
+
+fn integer_base_2() -> TomlParser(Node) {
+  let bin_digit = s.one_of(["0", "1"])
+  s.string("0b")
+  |> p.chain(fn(_) {
+    bin_digit
+    |> p.chain(fn(d) {
+      p.many(
+        p.optional(c.char("_"))
+        |> p.chain(fn(_) { bin_digit }),
+      )
       |> p.map(fn(ds) { [d, ..ds] })
     })
+    |> p.chain(fn(it) {
+      let int_parsed =
+        it
+        |> list.map(int.parse)
+        |> flatten_result_list()
+        |> int.undigits(2)
 
-  let int_str =
-    sign
-    |> p.chain(fn(s) {
-      uint_str
-      |> p.map(fn(u) { [s, ..u] })
+      case int_parsed {
+        Ok(it) -> p.of(VInteger(it))
+        Error(_) -> p.fail()
+      }
     })
+  })
+}
 
-  p.fail()
+fn integer_base_8() -> TomlParser(Node) {
+  let oct_digit = s.one_of(["0", "1", "2", "3", "4", "5", "6", "7"])
+  s.string("0o")
+  |> p.chain(fn(_) {
+    oct_digit
+    |> p.chain(fn(d) {
+      p.many(
+        p.optional(c.char("_"))
+        |> p.chain(fn(_) { oct_digit }),
+      )
+      |> p.map(fn(ds) { [d, ..ds] })
+    })
+    |> p.chain(fn(it) {
+      let int_parsed =
+        it
+        |> list.map(int.parse)
+        |> flatten_result_list()
+        |> int.undigits(8)
+
+      case int_parsed {
+        Ok(it) -> p.of(VInteger(it))
+        Error(_) -> p.fail()
+      }
+    })
+  })
+}
+
+fn parse_int_16(it) {
+  case it {
+    "0" -> Ok(0)
+    "1" -> Ok(1)
+    "2" -> Ok(2)
+    "3" -> Ok(3)
+    "4" -> Ok(4)
+    "5" -> Ok(5)
+    "6" -> Ok(6)
+    "7" -> Ok(7)
+    "8" -> Ok(8)
+    "9" -> Ok(9)
+    "A" -> Ok(10)
+    "B" -> Ok(11)
+    "C" -> Ok(12)
+    "D" -> Ok(13)
+    "E" -> Ok(14)
+    "F" -> Ok(15)
+    "a" -> Ok(10)
+    "b" -> Ok(11)
+    "c" -> Ok(12)
+    "d" -> Ok(13)
+    "e" -> Ok(14)
+    "f" -> Ok(15)
+    _ -> Error(Nil)
+  }
+}
+
+fn integer_base_16() -> TomlParser(Node) {
+  let oct_digit =
+    s.one_of([
+      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E",
+      "F", "a", "b", "c", "d", "e", "f",
+    ])
+  s.string("0x")
+  |> p.chain(fn(_) {
+    oct_digit
+    |> p.chain(fn(d) {
+      p.many(
+        p.optional(c.char("_"))
+        |> p.chain(fn(_) { oct_digit }),
+      )
+      |> p.map(fn(ds) { [d, ..ds] })
+    })
+    |> p.chain(fn(it) {
+      let int_parsed =
+        it
+        |> list.map(parse_int_16)
+        |> flatten_result_list()
+        |> int.undigits(16)
+
+      case int_parsed {
+        Ok(it) -> p.of(VInteger(it))
+        Error(_) -> p.fail()
+      }
+    })
+  })
 }
 
 fn integer() -> TomlParser(Node) {
-  c.digit()
-  |> p.chain(fn(d) {
-    p.many(
-      p.optional(c.char("_"))
-      |> p.chain(fn(_) { c.digit() }),
-    )
-    |> p.map(fn(ds) { [d, ..ds] })
-  })
-  |> p.chain(fn(it) {
-    let int_parsed =
-      it
-      |> string.join("")
-      |> int.parse()
-
-    case int_parsed {
-      Ok(it) -> p.of(VInteger(it))
-      Error(_) -> p.fail()
-    }
-  })
+  integer_base_2()
+  |> p.alt(fn() { integer_base_8() })
+  |> p.alt(fn() { integer_base_16() })
+  |> p.alt(fn() { integer_base_10() })
 }
 
 fn esc_seq() -> TomlParser(c.Char) {
-  c.char("\"")
-  |> p.alt(fn() { c.char("\\") })
-  |> p.alt(fn() { c.char("/") })
-  |> p.alt(fn() {
-    c.char("b")
-    |> p.map(fn(_) { "\\b" })
-  })
-  |> p.alt(fn() {
-    c.char("t")
-    |> p.map(fn(_) { "\\t" })
-  })
-  |> p.alt(fn() {
-    c.char("n")
-    |> p.map(fn(_) { "\\n" })
-  })
-  |> p.alt(fn() {
-    c.char("f")
-    |> p.map(fn(_) { "\\f" })
-  })
-  |> p.alt(fn() {
-    c.char("r")
-    |> p.map(fn(_) { "\\r" })
+  c.char("\\")
+  |> p.chain(fn(_) {
+    c.char("\"")
+    |> p.alt(fn() { c.char("\\") })
+    |> p.alt(fn() { c.char("/") })
+    |> p.alt(fn() {
+      c.char("b")
+      |> p.map(fn(_) { "\\b" })
+    })
+    |> p.alt(fn() {
+      c.char("t")
+      |> p.map(fn(_) { "\\t" })
+    })
+    |> p.alt(fn() {
+      c.char("n")
+      |> p.map(fn(_) { "\\n" })
+    })
+    |> p.alt(fn() {
+      c.char("f")
+      |> p.map(fn(_) { "\\f" })
+    })
+    |> p.alt(fn() {
+      c.char("r")
+      |> p.map(fn(_) { "\\r" })
+    })
   })
   //   TODO unicode
 }

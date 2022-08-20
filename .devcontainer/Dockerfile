@@ -10,6 +10,12 @@ RUN mkdir -p /usr/local/rebar3 && cp ./rebar3 /usr/local/rebar3/rebar3
 ENV PATH=$PATH:/usr/local/rebar3
 RUN chmod +x /usr/local/rebar3/rebar3
 
+RUN wget https://github.com/BurntSushi/toml-test/releases/download/v1.2.0/toml-test-v1.2.0-linux-amd64.gz
+RUN mkdir -p /usr/local/toml-test && gunzip -c toml-test-v1.2.0-linux-amd64.gz > /usr/local/toml-test/toml-test 
+RUN chmod +x /usr/local/toml-test/toml-test
+ENV PATH=$PATH:/usr/local/toml-test
+RUN rm -rf toml-test-v1.2.0-linux-amd64.gz
+
 RUN wget https://packages.erlang-solutions.com/erlang-solutions_2.0_all.deb
 RUN dpkg -i erlang-solutions_2.0_all.deb
 RUN apt-get update
