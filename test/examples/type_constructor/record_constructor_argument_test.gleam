@@ -6,7 +6,7 @@ import parser_gleam/string as s
 import gleam/list
 import gleam/string
 import gleam/io
-import gleam/option.{None}
+import gleam/option.{None, Some}
 
 fn get_argument(str: String) {
   assert Ok(r) =
@@ -61,6 +61,17 @@ pub fn constructor_test() {
     |> should.equal(RecordConstructorArg(
       label: "a",
       ast: Constructor(module: None, name: "String", arguments: []),
+    ))
+  })
+}
+
+pub fn constructor_module_test() {
+  ["a: b.C"]
+  |> list.map(fn(str) {
+    get_argument(str)
+    |> should.equal(RecordConstructorArg(
+      label: "a",
+      ast: Constructor(module: Some("b"), name: "C", arguments: []),
     ))
   })
 }

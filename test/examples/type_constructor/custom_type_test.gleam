@@ -6,7 +6,7 @@ import parser_gleam/string as s
 import gleam/list
 import gleam/string
 import gleam/io
-import gleam/option.{None}
+import gleam/option.{None, Some}
 
 fn get_custom_types(str: String) {
   assert Ok(r) =
@@ -166,6 +166,38 @@ pub type ParseSuccess(i, a) {
         ),
       ],
       ["i", "a"],
+    ),
+  ])
+}
+
+pub fn constructor_irl3_test() {
+  let str =
+    "
+pub type A {
+  B(c: option.Option(Int))
+}
+    "
+
+  get_custom_types(str)
+  |> should.equal([
+    XCustomType(
+      "A",
+      [
+        RecordConstructor(
+          "B",
+          [
+            RecordConstructorArg(
+              "c",
+              Constructor(
+                Some("option"),
+                "Option",
+                [Constructor(None, "Int", [])],
+              ),
+            ),
+          ],
+        ),
+      ],
+      [],
     ),
   ])
 }

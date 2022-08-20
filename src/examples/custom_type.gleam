@@ -106,7 +106,9 @@ fn type_ast_constructor_arguments_parser() -> Parser(String, List(TypeAst)) {
   })
 }
 
-fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
+fn type_ast_constructor_no_module_parser(
+  module: Option(String),
+) -> Parser(String, TypeAst) {
   c.upper()
   |> p.chain(fn(head) {
     p.many_till(
@@ -127,8 +129,23 @@ fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
         |> p.map(fn(_) { [] })
       })
       |> p.map(fn(arguments) {
-        Constructor(module: None, name: name, arguments: arguments)
+        Constructor(module: module, name: name, arguments: arguments)
       })
+    })
+  })
+}
+
+fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
+  type_ast_constructor_no_module_parser(None)
+  |> p.alt(fn() {
+    p.many1_till(c.lower(), c.char("."))
+    |> p.chain(fn(module) {
+      type_ast_constructor_no_module_parser(
+        module
+        |> nel.to_list()
+        |> string.join("")
+        |> Some,
+      )
     })
   })
 }
@@ -197,8 +214,8 @@ fn type_ast_hole_parser() -> Parser(String, TypeAst) {
 fn type_ast_parser_no_comma_end() -> Parser(String, TypeAst) {
   type_ast_hole_parser()
   |> p.alt(type_ast_tuple_parser)
-  |> p.alt(type_ast_constructor_parser)
   |> p.alt(type_ast_fn_parser)
+  |> p.alt(type_ast_constructor_parser)
   |> p.alt(type_ast_var_parser)
 }
 
