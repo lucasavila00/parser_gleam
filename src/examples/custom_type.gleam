@@ -66,17 +66,15 @@ fn type_opener() {
   s.string("pub type ")
 }
 
-fn type_opener_look_ahead() {
-  p.look_ahead(type_opener())
-}
-
 fn ignored_code_parser() -> Parser(String, IgnoredCode) {
   p.many_till(
     p.item(),
-    p.either(
-      p.map(type_opener_look_ahead(), fn(_) { "" }),
-      fn() { string_eof() },
-    ),
+    p.look_ahead(
+      type_opener()
+      |> p.chain(fn(_) { p.many1_till(p.item(), c.char("{")) }),
+    )
+    |> p.map(fn(_) { "" })
+    |> p.alt(fn() { string_eof() }),
   )
   |> p.map(fn(chars) {
     chars

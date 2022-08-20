@@ -1,10 +1,11 @@
 import gleeunit/should
 import examples/custom_type.{
-  Constructor, RecordConstructor, RecordConstructorArg, XCustomType, ast_parser,
+  Constructor, RecordConstructor, RecordConstructorArg, Var, XCustomType, ast_parser,
 }
 import parser_gleam/string as s
 import gleam/list
 import gleam/string
+import gleam/io
 import gleam/option.{None}
 
 fn get_custom_types(str: String) {
@@ -18,6 +19,7 @@ fn get_custom_types(str: String) {
 
   r.value
   |> custom_type.filter_custom_types()
+  |> io.debug
 }
 
 pub fn empty_str_test() {
@@ -29,6 +31,17 @@ pub fn empty_str_test() {
 
 pub fn ignores_non_pub_test() {
   let str = "type A{A}"
+
+  get_custom_types(str)
+  |> should.equal([])
+}
+
+pub fn ignores_alias_test() {
+  let str =
+    "
+pub type Ast =
+  List(AstNode)  
+"
 
   get_custom_types(str)
   |> should.equal([])
@@ -94,6 +107,65 @@ pub fn one_constructor_with_args_test() {
         ),
       ],
       parameters: [],
+    ),
+  ])
+}
+
+pub fn constructor_irl_test() {
+  let str =
+    "pub type AstNode {
+  NodeIgnoredCode(it: IgnoredCode)
+  NodeXCustomType(it: XCustomType)
+}"
+
+  get_custom_types(str)
+  |> should.equal([
+    XCustomType(
+      "AstNode",
+      [
+        RecordConstructor(
+          "NodeIgnoredCode",
+          [RecordConstructorArg("it", Constructor(None, "IgnoredCode", []))],
+        ),
+        RecordConstructor(
+          "NodeXCustomType",
+          [RecordConstructorArg("it", Constructor(None, "XCustomType", []))],
+        ),
+      ],
+      [],
+    ),
+  ])
+}
+
+pub fn constructor_irl2_test() {
+  let str =
+    "
+pub type ParseSuccess(i, a) {
+  ParseSuccess(value: a, next: Stream(i), start: Stream(i))
+}
+    "
+
+  get_custom_types(str)
+  |> should.equal([
+    XCustomType(
+      "ParseSuccess(i, a)",
+      [
+        RecordConstructor(
+          "ParseSuccess",
+          [
+            RecordConstructorArg("value", Var("a")),
+            RecordConstructorArg(
+              "next",
+              Constructor(None, "Stream", [Var("i")]),
+            ),
+            RecordConstructorArg(
+              "start",
+              Constructor(None, "Stream", [Var("i")]),
+            ),
+          ],
+        ),
+      ],
+      [],
     ),
   ])
 }
