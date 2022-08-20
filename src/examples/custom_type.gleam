@@ -6,8 +6,6 @@ import gleam/string
 import gleam/list
 import fp_gl/non_empty_list as nel
 
-// TODO: constructor.module
-
 // -------------------------------------------------------------------------------------
 // gleam - model
 // -------------------------------------------------------------------------------------
