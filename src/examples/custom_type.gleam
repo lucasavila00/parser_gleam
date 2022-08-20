@@ -6,12 +6,14 @@ import gleam/string
 import gleam/list
 import fp_gl/non_empty_list as nel
 
+// TODO: remove all trims
+
 // -------------------------------------------------------------------------------------
 // gleam - model
 // -------------------------------------------------------------------------------------
 
 pub type TypeAst {
-  Constructor(module: Option(String), name: String, arguments: TypeAst)
+  Constructor(module: Option(String), name: String, arguments: List(TypeAst))
   Fn(arguments: List(TypeAst), return_: TypeAst)
   Var(name: String)
   Tuple(elems: List(TypeAst))
@@ -19,7 +21,7 @@ pub type TypeAst {
 }
 
 pub type RecordConstructorArg {
-  RecordConstructorArg(label: String, ast: String)
+  RecordConstructorArg(label: String, ast: TypeAst)
 }
 
 pub type RecordConstructor {
@@ -27,7 +29,11 @@ pub type RecordConstructor {
 }
 
 pub type XCustomType {
-  XCustomType(name: String, constructors: List(RecordConstructor))
+  XCustomType(
+    name: String,
+    constructors: List(RecordConstructor),
+    parameters: List(String),
+  )
 }
 
 // -------------------------------------------------------------------------------------
@@ -78,23 +84,135 @@ fn ignored_code_parser() -> Parser(String, IgnoredCode) {
   |> p.map(IgnoredCode)
 }
 
-fn parse_type_argument_value() {
-  p.either(
+fn type_ast_end() {
+  s.string(",")
+  |> p.alt(fn() { c.char(")") })
+  |> p.alt(fn() { string_eof() })
+}
+
+fn type_ast_end_look_ahead() {
+  p.look_ahead(type_ast_end())
+}
+
+fn type_ast_constructor_arguments_parser() -> Parser(String, List(TypeAst)) {
+  c.char("(")
+  |> p.chain(fn(_) {
+    p.many1_till(type_ast_parser(), type_ast_end_look_ahead())
+  })
+  |> p.chain(fn(it) {
+    c.char(")")
+    |> p.map(fn(_) {
+      it
+      |> nel.to_list()
+    })
+  })
+}
+
+fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
+  c.upper()
+  |> p.chain(fn(head) {
+    p.many_till(
+      p.item(),
+      c.char(")")
+      |> p.alt(fn() { p.look_ahead(c.char("(")) })
+      |> p.alt(string_eof),
+    )
+    |> p.chain(fn(tail) {
+      let name =
+        [head, ..tail]
+        |> string.join("")
+        |> string.trim()
+
+      type_ast_constructor_arguments_parser()
+      |> p.alt(fn() {
+        type_ast_end_look_ahead()
+        |> p.map(fn(_) { [] })
+      })
+      |> p.map(fn(arguments) {
+        Constructor(module: None, name: name, arguments: arguments)
+      })
+    })
+  })
+}
+
+fn type_ast_fn_parser() -> Parser(String, TypeAst) {
+  s.string("fn")
+  |> p.chain(fn(_) {
+    s.spaces()
+    |> p.chain(fn(_) {
+      c.char("(")
+      |> p.chain(fn(_) {
+        p.many_till(type_ast_parser(), type_ast_end_look_ahead())
+      })
+      |> p.chain(fn(it) {
+        c.char(")")
+        |> p.map(fn(_) { it })
+      })
+      |> p.chain(fn(arguments) {
+        s.spaces()
+        |> p.chain(fn(_) {
+          s.string("->")
+          |> p.chain(fn(_) {
+            s.spaces()
+            |> p.chain(fn(_) {
+              type_ast_parser()
+              |> p.map(fn(return_) {
+                Fn(arguments: arguments, return_: return_)
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+}
+
+fn type_ast_var_parser() -> Parser(String, TypeAst) {
+  p.many1_till(c.lower(), type_ast_end_look_ahead())
+  |> p.map(fn(chars) { Var(name: to_name(chars)) })
+}
+
+fn type_ast_tuple_parser() -> Parser(String, TypeAst) {
+  c.char("#")
+  |> p.chain(fn(_) {
     c.char("(")
     |> p.chain(fn(_) {
-      p.many1_till(parse_type_argument_value(), s.string(")"))
-      |> p.map(fn(it) {
-        string.concat([
-          "(",
-          it
-          |> nel.to_list()
-          |> string.join(""),
-          ")",
-        ])
-      })
-    }),
-    fn() { p.item() },
-  )
+      p.many1_till(type_ast_parser(), type_ast_end())
+      |> p.map(fn(elems) { Tuple(nel.to_list(elems)) })
+    })
+  })
+}
+
+fn type_ast_hole_parser() -> Parser(String, TypeAst) {
+  c.char("_")
+  |> p.chain(fn(_) {
+    p.many_till(p.item(), type_ast_end_look_ahead())
+    |> p.map(fn(chars) {
+      Hole(
+        name: ["_", ..chars]
+        |> string.join("")
+        |> string.trim(),
+      )
+    })
+  })
+}
+
+fn type_ast_parser() -> Parser(String, TypeAst) {
+  type_ast_hole_parser()
+  |> p.alt(type_ast_tuple_parser)
+  |> p.alt(type_ast_constructor_parser)
+  |> p.alt(type_ast_fn_parser)
+  |> p.alt(type_ast_var_parser)
+  |> p.chain_first(fn(_) {
+    p.optional(s.string(","))
+    |> p.chain(fn(_) { s.spaces() })
+  })
+}
+
+fn record_constructor_argment_end() {
+  s.string(",")
+  |> p.alt(fn() { p.look_ahead(c.char(")")) })
+  |> p.alt(fn() { string_eof() })
 }
 
 pub fn record_constructor_argment_parser() -> Parser(
@@ -103,14 +221,9 @@ pub fn record_constructor_argment_parser() -> Parser(
 ) {
   p.many1_till(p.item(), s.string(": "))
   |> p.chain(fn(name) {
-    p.many1_till(
-      parse_type_argument_value(),
-      s.string(",")
-      |> p.alt(fn() { p.look_ahead(c.char(")")) })
-      |> p.alt(fn() { string_eof() }),
-    )
+    p.many1_till(type_ast_parser(), record_constructor_argment_end())
     |> p.map(fn(value) {
-      RecordConstructorArg(label: to_name(name), ast: to_name(value))
+      RecordConstructorArg(label: to_name(name), ast: value.head)
     })
   })
 }
@@ -163,7 +276,11 @@ fn custom_type_parser() -> Parser(String, XCustomType) {
       |> p.chain(fn(_) {
         p.many_till(record_constructor_parser(), c.char("}"))
         |> p.map(fn(constructors) {
-          XCustomType(name: to_name(name), constructors: constructors)
+          XCustomType(
+            name: to_name(name),
+            constructors: constructors,
+            parameters: [],
+          )
         })
       })
     })

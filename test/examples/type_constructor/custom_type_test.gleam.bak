@@ -49,6 +49,7 @@ pub fn one_constructor_no_args_test() {
       XCustomType(
         name: "A",
         constructors: [RecordConstructor(name: "A", arguments: [])],
+        parameters: [],
       ),
     ])
   })
@@ -67,6 +68,7 @@ pub fn two_constructors_no_args_test() {
           RecordConstructor(name: "A", arguments: []),
           RecordConstructor(name: "B", arguments: []),
         ],
+        parameters: [],
       ),
     ])
   })
@@ -85,6 +87,7 @@ pub fn one_constructor_with_args_test() {
           arguments: [RecordConstructorArg(label: "c", ast: "String")],
         ),
       ],
+      parameters: [],
     ),
   ])
 }
