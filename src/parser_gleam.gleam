@@ -32,7 +32,7 @@ fn with_type_info(type_: String, value: String) {
   |> json.object()
 }
 
-fn to_json_obj(tbl: Table) -> Json {
+fn table_to_json_object(tbl: Table) -> Json {
   tbl
   |> list.map(fn(it) {
     let #(key, node) = it
@@ -43,8 +43,8 @@ fn to_json_obj(tbl: Table) -> Json {
 
 fn node_to_json(node: Node) -> Json {
   case node {
-    toml.VTable(it) -> to_json_obj(it)
-    toml.VTArray(it) -> json.array(it, to_json_obj)
+    toml.VTable(it) -> table_to_json_object(it)
+    toml.VTArray(it) -> json.array(it, table_to_json_object)
     toml.VString(it) -> with_type_info("string", it)
     toml.VInteger(it) ->
       with_type_info(
@@ -68,12 +68,12 @@ fn node_to_json(node: Node) -> Json {
         RFC3339LocalDate(_) -> with_type_info("date-local", print_rfc_3339(it))
         RFC3339LocalTime(_) -> with_type_info("time-local", print_rfc_3339(it))
       }
-    toml.VArray(it) -> todo
+    toml.VArray(it) -> json.array(it, node_to_json)
   }
 }
 
 fn serialize_toml(toml: Table) -> String {
-  to_json_obj(toml)
+  table_to_json_object(toml)
   |> json.to_string()
 }
 

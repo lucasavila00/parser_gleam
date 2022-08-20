@@ -199,6 +199,17 @@ b3 = 0b00000
   ])
 }
 
+pub fn multine_test() {
+  let str =
+    "more = \"\"\"
+abc \\
+\"\"\"
+"
+
+  parse_toml(str)
+  |> should.equal([#("more", VString("abc "))])
+}
+
 pub fn comment0_test() {
   let str = "key = \"value\""
 
@@ -331,4 +342,52 @@ pub fn comment_everywhere_test() {
 
   parse_toml(str)
   |> should.equal([#("more", VArray([VInteger(42), VInteger(42)]))])
+}
+
+pub fn multiline_big_test() {
+  let str =
+    "
+multiline_empty_four = \"\"\"\\
+   \\
+   \\  
+   \"\"\"
+"
+
+  parse_toml(str)
+  |> should.equal([#("multiline_empty_four", VString(""))])
+}
+
+pub fn comment_tricky_test() {
+  let str =
+    "
+[section]#attached comment
+#[notsection]
+one = \"11\"#cmt
+two = \"22#\"
+three = '#'
+
+four = \"\"\"# no comment
+# nor this
+#also not comment\"\"\"#is_comment
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #(
+      "section",
+      VTable([
+        #("one", VString("11")),
+        #("two", VString("22#")),
+        #("three", VString("#")),
+        #(
+          "four",
+          VString(
+            "# no comment
+# nor this
+#also not comment",
+          ),
+        ),
+      ]),
+    ),
+  ])
 }

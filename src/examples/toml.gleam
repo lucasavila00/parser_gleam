@@ -270,30 +270,45 @@ pub fn basic_str() -> TomlParser(String) {
 }
 
 fn multi_basic_str() -> TomlParser(String) {
-  p.fail()
-  //   let esc_white_space =
-  //     p.many(
-  //       c.char("\\")
-  //       |> p.chain(fn(_) {
-  //         c.char("\n")
-  //         |> p.chain(fn(_) { s.one_of([" ", "\t", "\n"]) })
-  //       }),
-  //     )
+  // Parse escaped white space, if any
+  let esc_white_space =
+    p.many(
+      c.char("\\")
+      |> p.chain(fn(_) {
+        p.many(s.one_of([" ", "\t"]))
+        |> p.chain(fn(_) {
+          c.char("\n")
+          |> p.chain(fn(_) { p.many(s.one_of([" ", "\t", "\n"])) })
+        })
+      }),
+    )
 
-  //   let d_quote_3 = s.string("\"\"\"")
-  //   let open_d_quote_3 =
-  //     d_quote_3
-  //     |> p.chain_first(fn(_) { esc_white_space })
-  //     |> p.alt(fn() { d_quote_3 })
+  // Parse a string char, accepting escaped codes, ignoring escaped white space
+  let str_char =
+    esc_seq()
+    |> p.alt(fn() { c.not_one_of("\\") })
+    |> p.chain_first(fn(_) { esc_white_space })
 
-  //   let str_char =
-  //     esc_seq()
-  //     |> p.chain_first(fn(_) { esc_white_space })
+  // Parse tripple-double quotes
+  let d_quote_3 = s.string("\"\"\"")
 
-  //   open_d_quote_3
-  //   |> p.chain(fn(_) { p.fail() })
+  // Parse the a tripple-double quote, with possibly a newline attached
+  let open_d_quote_3 =
+    d_quote_3
+    |> p.chain_first(fn(_) { c.char("\n") })
+    |> p.alt(fn() { d_quote_3 })
 
-  // TODO fix it
+  open_d_quote_3
+  |> p.chain(fn(_) {
+    esc_white_space
+    |> p.chain(fn(_) {
+      p.many_till(str_char, d_quote_3)
+      |> p.map(fn(it) {
+        it
+        |> string.join("")
+      })
+    })
+  })
 }
 
 fn literal_str() -> TomlParser(String) {
