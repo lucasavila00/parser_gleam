@@ -1,10 +1,11 @@
 import gleeunit/should
 import examples/custom_type.{
-  RecordConstructor, RecordConstructorArg, XCustomType, ast_parser,
+  Constructor, RecordConstructor, RecordConstructorArg, XCustomType, ast_parser,
 }
 import parser_gleam/string as s
 import gleam/list
 import gleam/string
+import gleam/option.{None}
 
 fn get_custom_types(str: String) {
   assert Ok(r) =
@@ -84,7 +85,12 @@ pub fn one_constructor_with_args_test() {
       constructors: [
         RecordConstructor(
           name: "B",
-          arguments: [RecordConstructorArg(label: "c", ast: "String")],
+          arguments: [
+            RecordConstructorArg(
+              label: "c",
+              ast: Constructor(module: None, name: "String", arguments: []),
+            ),
+          ],
         ),
       ],
       parameters: [],

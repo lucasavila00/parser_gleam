@@ -4,9 +4,11 @@ import parser_gleam/string as s
 import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/list
+import gleam/io
 import fp_gl/non_empty_list as nel
 
 // TODO: remove all trims
+// TODO: constructor.module
 
 // -------------------------------------------------------------------------------------
 // gleam - model
@@ -113,7 +115,7 @@ fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
   |> p.chain(fn(head) {
     p.many_till(
       p.item(),
-      c.char(")")
+      p.look_ahead(c.char(")"))
       |> p.alt(fn() { p.look_ahead(c.char("(")) })
       |> p.alt(string_eof),
     )
@@ -210,12 +212,11 @@ fn type_ast_parser() -> Parser(String, TypeAst) {
 }
 
 fn record_constructor_argment_end() {
-  s.string(",")
-  |> p.alt(fn() { p.look_ahead(c.char(")")) })
+  p.look_ahead(c.char(")"))
   |> p.alt(fn() { string_eof() })
 }
 
-pub fn record_constructor_argment_parser() -> Parser(
+pub fn record_constructor_argument_parser() -> Parser(
   String,
   RecordConstructorArg,
 ) {
@@ -238,12 +239,12 @@ fn record_constructor_name() {
   )
 }
 
-fn record_constructor_arguments() {
+fn record_constructor_arguments() -> Parser(String, List(RecordConstructorArg)) {
   p.either(
     c.char("(")
     |> p.chain(fn(_) {
       p.many1_till(
-        record_constructor_argment_parser(),
+        record_constructor_argument_parser(),
         c.char(")")
         |> p.chain(fn(_) { s.spaces() })
         |> p.alt(fn() { p.look_ahead(c.char("}")) }),
@@ -257,12 +258,9 @@ fn record_constructor_arguments() {
 pub fn record_constructor_parser() -> Parser(String, RecordConstructor) {
   record_constructor_name()
   |> p.chain(fn(name) {
-    s.spaces()
-    |> p.chain(fn(_) {
-      record_constructor_arguments()
-      |> p.map(fn(args) {
-        RecordConstructor(name: to_name(name), arguments: args)
-      })
+    record_constructor_arguments()
+    |> p.map(fn(args) {
+      RecordConstructor(name: to_name(name), arguments: args)
     })
   })
 }

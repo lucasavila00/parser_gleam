@@ -1,6 +1,6 @@
 import gleeunit/should
 import examples/custom_type.{
-  Constructor, Fn, Hole, RecordConstructorArg, Tuple, Var, record_constructor_argment_parser,
+  Constructor, Fn, Hole, RecordConstructorArg, Tuple, Var, record_constructor_argument_parser,
 }
 import parser_gleam/string as s
 import gleam/list
@@ -10,7 +10,7 @@ import gleam/option.{None}
 
 fn get_argument(str: String) {
   assert Ok(r) =
-    record_constructor_argment_parser()
+    record_constructor_argument_parser()
     |> s.run(str)
 
   case string.length(str) == r.next.cursor {
@@ -137,6 +137,20 @@ pub fn fn_test() {
       label: "a",
       ast: Fn(
         arguments: [],
+        return_: Constructor(module: None, name: "Nil", arguments: []),
+      ),
+    ))
+  })
+}
+
+pub fn fn2_test() {
+  ["a: fn(a) -> Nil"]
+  |> list.map(fn(str) {
+    get_argument(str)
+    |> should.equal(RecordConstructorArg(
+      label: "a",
+      ast: Fn(
+        arguments: [Var(name: "a")],
         return_: Constructor(module: None, name: "Nil", arguments: []),
       ),
     ))
