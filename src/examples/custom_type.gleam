@@ -6,7 +6,6 @@ import gleam/string
 import gleam/list
 import fp_gl/non_empty_list as nel
 
-// TODO: remove all trims
 // TODO: constructor.module
 
 // -------------------------------------------------------------------------------------
@@ -251,8 +250,7 @@ fn record_constructor_arguments() -> Parser(String, List(RecordConstructorArg)) 
       p.many1_till(
         record_constructor_argument_parser(),
         c.char(")")
-        |> p.chain(fn(_) { s.spaces() })
-        |> p.alt(fn() { p.look_ahead(c.char("}")) }),
+        |> p.chain(fn(_) { s.spaces() }),
       )
       |> p.map(nel.to_list)
     }),
@@ -270,22 +268,56 @@ pub fn record_constructor_parser() -> Parser(String, RecordConstructor) {
   })
 }
 
+fn custom_type_parameters_name_parser() -> Parser(String, String) {
+  p.many1_till(
+    p.item(),
+    c.char(",")
+    |> p.chain(fn(_) { s.spaces() })
+    |> p.alt(fn() { p.look_ahead(c.char(")")) }),
+  )
+  |> p.map(nel.to_list)
+  |> p.map(fn(it) {
+    it
+    |> string.join("")
+  })
+}
+
+fn custom_type_parameters_parser() -> Parser(String, List(String)) {
+  p.either(
+    c.char("(")
+    |> p.chain(fn(_) {
+      p.many1_till(custom_type_parameters_name_parser(), c.char(")"))
+      |> p.chain_first(fn(_) { s.spaces() })
+      |> p.map(nel.to_list)
+    }),
+    fn() { p.of([]) },
+  )
+}
+
 fn custom_type_parser() -> Parser(String, XCustomType) {
   type_opener()
   |> p.chain(fn(_) {
-    p.many1_till(p.item(), c.char("{"))
+    p.many1_till(
+      p.item(),
+      p.look_ahead(c.char("{"))
+      |> p.alt(fn() { p.look_ahead(c.char("(")) }),
+    )
     |> p.chain(fn(name) {
-      s.spaces()
-      |> p.chain(fn(_) {
-        p.many_till(record_constructor_parser(), c.char("}"))
-        |> p.map(fn(constructors) {
-          XCustomType(
-            name: name
-            |> to_name()
-            |> string.trim(),
-            constructors: constructors,
-            parameters: [],
-          )
+      custom_type_parameters_parser()
+      |> p.chain(fn(parameters) {
+        c.char("{")
+        |> p.chain(fn(_) { s.spaces() })
+        |> p.chain(fn(_) {
+          p.many_till(record_constructor_parser(), c.char("}"))
+          |> p.map(fn(constructors) {
+            XCustomType(
+              name: name
+              |> to_name()
+              |> string.trim(),
+              constructors: constructors,
+              parameters: parameters,
+            )
+          })
         })
       })
     })

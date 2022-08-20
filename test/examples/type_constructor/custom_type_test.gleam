@@ -148,7 +148,7 @@ pub type ParseSuccess(i, a) {
   get_custom_types(str)
   |> should.equal([
     XCustomType(
-      "ParseSuccess(i, a)",
+      "ParseSuccess",
       [
         RecordConstructor(
           "ParseSuccess",
@@ -165,7 +165,7 @@ pub type ParseSuccess(i, a) {
           ],
         ),
       ],
-      [],
+      ["i", "a"],
     ),
   ])
 }
