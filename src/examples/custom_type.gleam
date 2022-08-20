@@ -123,7 +123,6 @@ fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
       let name =
         [head, ..tail]
         |> string.join("")
-        |> string.trim()
 
       type_ast_constructor_arguments_parser()
       |> p.alt(fn() {
@@ -192,8 +191,7 @@ fn type_ast_hole_parser() -> Parser(String, TypeAst) {
     |> p.map(fn(chars) {
       Hole(
         name: ["_", ..chars]
-        |> string.join("")
-        |> string.trim(),
+        |> string.join(""),
       )
     })
   })
@@ -284,7 +282,9 @@ fn custom_type_parser() -> Parser(String, XCustomType) {
         p.many_till(record_constructor_parser(), c.char("}"))
         |> p.map(fn(constructors) {
           XCustomType(
-            name: to_name(name),
+            name: name
+            |> to_name()
+            |> string.trim(),
             constructors: constructors,
             parameters: [],
           )
@@ -337,5 +337,4 @@ fn to_name(it: nel.NonEmptyList(String)) -> String {
   it
   |> nel.to_list()
   |> string.join("")
-  |> string.trim()
 }
