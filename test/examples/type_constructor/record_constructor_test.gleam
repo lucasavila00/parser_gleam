@@ -50,55 +50,67 @@ pub fn with_one_arg_test() {
     ))
   })
 }
-// pub fn with_args_test() {
-//   ["A(a: String, b: Int, c: Bool)"]
-//   |> list.map(fn(str) {
-//     get_constructor(str)
-//     |> should.equal(RecordConstructor(
-//       name: "A",
-//       arguments: [
-//         RecordConstructorArg(
-//           label: "a",
-//           ast: Constructor(module: None, name: "String", arguments: []),
-//         ),
-//         RecordConstructorArg(
-//           label: "b",
-//           ast: Constructor(module: None, name: "Int", arguments: []),
-//         ),
-//         RecordConstructorArg(
-//           label: "c",
-//           ast: Constructor(module: None, name: "Bool", arguments: []),
-//         ),
-//       ],
-//     ))
-//   })
-// }
-// pub fn with_generic_args_test() {
-//   ["A(a: String, b: I(Int), c: B(Bool))"]
-//   |> list.map(fn(str) {
-//     get_constructor(str)
-//     |> should.equal(RecordConstructor(
-//       name: "A",
-//       arguments: [
-//         RecordConstructorArg(label: "a", ast: "String"),
-//         RecordConstructorArg(label: "b", ast: "I(Int)"),
-//         RecordConstructorArg(label: "c", ast: "B(Bool)"),
-//       ],
-//     ))
-//   })
-// }
 
-// pub fn with_generic_args2_test() {
-//   ["A(a: String, b: I(Int), c: B(B(Bool)))"]
-//   |> list.map(fn(str) {
-//     get_constructor(str)
-//     |> should.equal(RecordConstructor(
-//       name: "A",
-//       arguments: [
-//         RecordConstructorArg(label: "a", ast: "String"),
-//         RecordConstructorArg(label: "b", ast: "I(Int)"),
-//         RecordConstructorArg(label: "c", ast: "B(B(Bool))"),
-//       ],
-//     ))
-//   })
-// }
+pub fn with_one_arg2_test() {
+  ["A(a: S)"]
+  |> list.map(fn(str) {
+    get_constructor(str)
+    |> should.equal(RecordConstructor(
+      name: "A",
+      arguments: [
+        RecordConstructorArg(
+          label: "a",
+          ast: Constructor(module: None, name: "S", arguments: []),
+        ),
+      ],
+    ))
+  })
+}
+
+pub fn with_args_test() {
+  ["A(a: S, b: I)"]
+  |> list.map(fn(str) {
+    get_constructor(str)
+    |> should.equal(RecordConstructor(
+      name: "A",
+      arguments: [
+        RecordConstructorArg(
+          label: "a",
+          ast: Constructor(module: None, name: "S", arguments: []),
+        ),
+        RecordConstructorArg(
+          label: "b",
+          ast: Constructor(module: None, name: "I", arguments: []),
+        ),
+      ],
+    ))
+  })
+}
+
+pub fn with_generic_args_test() {
+  ["A(a: S(T), b: I(J))"]
+  |> list.map(fn(str) {
+    get_constructor(str)
+    |> should.equal(RecordConstructor(
+      name: "A",
+      arguments: [
+        RecordConstructorArg(
+          label: "a",
+          ast: Constructor(
+            module: None,
+            name: "S",
+            arguments: [Constructor(module: None, name: "T", arguments: [])],
+          ),
+        ),
+        RecordConstructorArg(
+          label: "b",
+          ast: Constructor(
+            module: None,
+            name: "I",
+            arguments: [Constructor(module: None, name: "J", arguments: [])],
+          ),
+        ),
+      ],
+    ))
+  })
+}

@@ -4,7 +4,6 @@ import parser_gleam/string as s
 import gleam/option.{None, Option, Some}
 import gleam/string
 import gleam/list
-import gleam/io
 import fp_gl/non_empty_list as nel
 
 // TODO: remove all trims
@@ -115,7 +114,8 @@ fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
   |> p.chain(fn(head) {
     p.many_till(
       p.item(),
-      p.look_ahead(c.char(")"))
+      p.look_ahead(c.char(","))
+      |> p.alt(fn() { p.look_ahead(c.char(")")) })
       |> p.alt(fn() { p.look_ahead(c.char("(")) })
       |> p.alt(string_eof),
     )
@@ -199,12 +199,16 @@ fn type_ast_hole_parser() -> Parser(String, TypeAst) {
   })
 }
 
-fn type_ast_parser() -> Parser(String, TypeAst) {
+fn type_ast_parser_no_comma_end() -> Parser(String, TypeAst) {
   type_ast_hole_parser()
   |> p.alt(type_ast_tuple_parser)
   |> p.alt(type_ast_constructor_parser)
   |> p.alt(type_ast_fn_parser)
   |> p.alt(type_ast_var_parser)
+}
+
+fn type_ast_parser() -> Parser(String, TypeAst) {
+  type_ast_parser_no_comma_end()
   |> p.chain_first(fn(_) {
     p.optional(s.string(","))
     |> p.chain(fn(_) { s.spaces() })
@@ -212,7 +216,9 @@ fn type_ast_parser() -> Parser(String, TypeAst) {
 }
 
 fn record_constructor_argment_end() {
-  p.look_ahead(c.char(")"))
+  c.char(",")
+  |> p.chain(fn(_) { s.spaces() })
+  |> p.alt(fn() { p.look_ahead(c.char(")")) })
   |> p.alt(fn() { string_eof() })
 }
 
@@ -222,7 +228,10 @@ pub fn record_constructor_argument_parser() -> Parser(
 ) {
   p.many1_till(p.item(), s.string(": "))
   |> p.chain(fn(name) {
-    p.many1_till(type_ast_parser(), record_constructor_argment_end())
+    p.many1_till(
+      type_ast_parser_no_comma_end(),
+      record_constructor_argment_end(),
+    )
     |> p.map(fn(value) {
       RecordConstructorArg(label: to_name(name), ast: value.head)
     })
