@@ -166,16 +166,18 @@ fn table_array_header() -> TomlParser(List(String)) {
 }
 
 fn header_value() -> TomlParser(List(String)) {
-  p.sep_by1(c.char("."), p.many1(key_char()))
-  |> p.map(fn(it) {
-    it
-    |> nel.to_list()
-    |> list.map(fn(it) {
+  p.sep_by1(
+    c.char("."),
+    p.many1(key_char())
+    |> p.map(fn(it) {
       it
       |> nel.to_list()
       |> string.join("")
     })
-  })
+    |> p.alt(any_str_s)
+    |> p.between(skip_blanks(), skip_blanks()),
+  )
+  |> p.map(nel.to_list)
 }
 
 fn value() -> TomlParser(Node) {
@@ -198,6 +200,7 @@ fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {
 
   skip_blanks()
   |> p.chain(fn(_) { separated_values })
+  |> p.chain_first(fn(_) { p.optional(comma) })
   |> p.between(c.char("["), c.char("]"))
   |> p.map(VArray)
 }
@@ -254,7 +257,8 @@ fn any_str_s() -> TomlParser(String) {
 pub fn basic_str() -> TomlParser(String) {
   let str_char =
     esc_seq()
-    |> p.alt(fn() { c.not_one_of("\"") })
+    |> p.alt(fn() { p.sat(fn(it) { it != "\"" && it != "\\" }) })
+
   let d_quote = c.char("\"")
   p.many(str_char)
   |> p.between(d_quote, d_quote)
@@ -292,8 +296,13 @@ fn multi_basic_str() -> TomlParser(String) {
 }
 
 fn literal_str() -> TomlParser(String) {
-  // TODO fix it
-  p.fail()
+  let s_quote = c.char("'")
+  p.many(p.sat(fn(it) { it != "'" }))
+  |> p.between(s_quote, s_quote)
+  |> p.map(fn(st) {
+    st
+    |> string.join("")
+  })
 }
 
 fn multi_literal_str() -> TomlParser(String) {
@@ -503,7 +512,7 @@ fn integer() -> TomlParser(Node) {
   |> p.alt(fn() { integer_base_10() })
 }
 
-fn esc_seq() -> TomlParser(c.Char) {
+pub fn esc_seq() -> TomlParser(c.Char) {
   c.char("\\")
   |> p.chain(fn(_) {
     c.char("\"")

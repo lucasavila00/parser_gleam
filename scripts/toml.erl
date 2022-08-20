@@ -9,7 +9,7 @@ read_stdin(A) ->
     case io:get_line("") of
         eof ->
             {ok, It} = toml_to_json_(string:join(A, "")),
-            io:format("~s", [It]),
+            io:format("~ts", [It]),
             init:stop();
         Line ->
             read_stdin(A ++ [Line])

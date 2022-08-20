@@ -243,6 +243,13 @@ pub fn table_empty4_test() {
   |> should.equal([#("a", VTable([#("b", VTable([]))]))])
 }
 
+// pub fn date_test() {
+//   let str = "d = 1979-05-27"
+
+//   parse_toml(str)
+//   |> should.equal([#("more", VArray([VInteger(42), VInteger(42)]))])
+// }
+
 pub fn table_with_data_test() {
   let str =
     "[a]
@@ -298,4 +305,16 @@ last_name = \"Seger\"
       ]),
     ),
   ])
+}
+
+pub fn comment_everywhere_test() {
+  let str =
+    "more = [
+# Evil.
+42, 42,
+]
+"
+
+  parse_toml(str)
+  |> should.equal([#("more", VArray([VInteger(42), VInteger(42)]))])
 }
