@@ -1,6 +1,7 @@
 import parser_gleam/parser as p
 import parser_gleam/char as c
 import parser_gleam/string as s
+import examples/rfc_3339
 import gleam/io
 import gleam/string
 import gleam/list
@@ -23,7 +24,7 @@ pub type Node {
   VInteger(Int)
   VFloat(Float)
   VBoolean(Bool)
-  VDatetime(String)
+  VDatetime(rfc_3339.RFC3339)
   VArray(List(Node))
 }
 
@@ -311,12 +312,7 @@ fn multi_literal_str() -> TomlParser(String) {
 }
 
 fn datetime() -> TomlParser(Node) {
-  p.many_till(p.item(), c.char("Z"))
-  |> p.map(fn(it) {
-    it
-    |> string.join("")
-    |> string.append("Z")
-  })
+  rfc_3339.rfc_3339_parser()
   |> p.map(VDatetime)
 }
 

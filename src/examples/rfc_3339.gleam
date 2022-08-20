@@ -32,10 +32,10 @@ pub type LocalTime {
 }
 
 pub type RFC3339 {
-  VDatetime(Datetime)
-  VLocalDatetime(LocalDatetime)
-  VLocalDate(LocalDate)
-  VLocalTime(LocalTime)
+  RFC3339Datetime(Datetime)
+  RFC3339LocalDatetime(LocalDatetime)
+  RFC3339LocalDate(LocalDate)
+  RFC3339LocalTime(LocalTime)
 }
 
 // -------------------------------------------------------------------------------------
@@ -303,17 +303,100 @@ fn datetime() -> RFC3339Parser(Datetime) {
 
 pub fn rfc_3339_parser() -> RFC3339Parser(RFC3339) {
   datetime()
-  |> p.map(VDatetime)
+  |> p.map(RFC3339Datetime)
   |> p.alt(fn() {
     local_datetime()
-    |> p.map(VLocalDatetime)
+    |> p.map(RFC3339LocalDatetime)
   })
   |> p.alt(fn() {
     local_date()
-    |> p.map(VLocalDate)
+    |> p.map(RFC3339LocalDate)
   })
   |> p.alt(fn() {
     local_time()
-    |> p.map(VLocalTime)
+    |> p.map(RFC3339LocalTime)
   })
+}
+
+// -------------------------------------------------------------------------------------
+// printers
+// -------------------------------------------------------------------------------------
+
+fn print_local_date(it: LocalDate) -> String {
+  string.concat([
+    it.year
+    |> int.to_string(),
+    "-",
+    it.month
+    |> int.to_string(),
+    "-",
+    it.day
+    |> int.to_string(),
+  ])
+}
+
+fn print_precision(it: Option(Int)) -> String {
+  case it {
+    None -> ""
+    Some(it) ->
+      string.concat([
+        ".",
+        it
+        |> int.to_string(),
+      ])
+  }
+}
+
+fn print_local_time(it: LocalTime) -> String {
+  string.concat([
+    it.hour
+    |> int.to_string(),
+    ":",
+    it.minutes
+    |> int.to_string(),
+    ":",
+    it.seconds
+    |> int.to_string(),
+    print_precision(it.precision),
+  ])
+}
+
+fn print_timezone(it: Timezone) -> String {
+  case it {
+    TimezoneZulu -> "Z"
+    TimezonePositive(h, m) ->
+      string.concat([
+        "+",
+        h
+        |> int.to_string(),
+        ":",
+        m
+        |> int.to_string(),
+      ])
+    TimezoneNegative(h, m) ->
+      string.concat([
+        "-",
+        h
+        |> int.to_string(),
+        ":",
+        m
+        |> int.to_string(),
+      ])
+  }
+}
+
+pub fn print_rfc_3339(it: RFC3339) -> String {
+  case it {
+    RFC3339Datetime(Datetime(d, t, tz)) ->
+      string.concat([
+        print_local_date(d),
+        "T",
+        print_local_time(t),
+        print_timezone(tz),
+      ])
+    RFC3339LocalDatetime(LocalDatetime(d, t)) ->
+      string.concat([print_local_date(d), "T", print_local_time(t)])
+    RFC3339LocalDate(d) -> print_local_date(d)
+    RFC3339LocalTime(t) -> print_local_time(t)
+  }
 }

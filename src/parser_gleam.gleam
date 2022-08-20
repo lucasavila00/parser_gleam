@@ -1,11 +1,12 @@
-import gleam/io
 import examples/toml.{
   Node, Table, VArray, VBoolean, VDatetime, VInteger, toml_doc_parser,
+}
+import examples/rfc_3339.{
+  RFC3339Datetime, RFC3339LocalDate, RFC3339LocalDatetime, RFC3339LocalTime, print_rfc_3339,
 }
 import parser_gleam/string as s
 import gleam/json.{Json}
 import gleam/list
-import gleam/bool
 import gleam/int
 
 fn parse_toml(it: String) {
@@ -59,7 +60,14 @@ fn node_to_json(node: Node) -> Json {
         |> json.bool()
         |> json.to_string(),
       )
-    toml.VDatetime(it) -> todo
+    toml.VDatetime(it) ->
+      case it {
+        RFC3339Datetime(_) -> with_type_info("datetime", print_rfc_3339(it))
+        RFC3339LocalDatetime(_) ->
+          with_type_info("datetime-local", print_rfc_3339(it))
+        RFC3339LocalDate(_) -> with_type_info("date-local", print_rfc_3339(it))
+        RFC3339LocalTime(_) -> with_type_info("time-local", print_rfc_3339(it))
+      }
     toml.VArray(it) -> todo
   }
 }

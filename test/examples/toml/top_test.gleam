@@ -2,8 +2,13 @@ import gleeunit/should
 import examples/toml.{
   VArray, VBoolean, VDatetime, VInteger, VString, VTArray, VTable,
 }
+import examples/rfc_3339.{
+  Datetime, LocalDate, LocalDatetime, LocalTime, RFC3339Datetime, RFC3339LocalDate,
+  RFC3339LocalDatetime, RFC3339LocalTime, TimezoneNegative, TimezonePositive, TimezoneZulu,
+}
 import parser_gleam/string as s
 import gleam/io
+import gleam/option.{None, Some}
 
 fn parse_toml(str: String) {
   assert Ok(r) =
@@ -32,7 +37,16 @@ pub fn example2_test() {
   let str = "best-day-ever = 1987-07-05T17:45:00Z"
 
   parse_toml(str)
-  |> should.equal([#("best-day-ever", VDatetime("1987-07-05T17:45:00Z"))])
+  |> should.equal([
+    #(
+      "best-day-ever",
+      VDatetime(RFC3339Datetime(Datetime(
+        LocalDate(year: 1987, month: 7, day: 5),
+        LocalTime(17, 45, 0, None),
+        TimezoneZulu,
+      ))),
+    ),
+  ])
 }
 
 pub fn example3_test() {
@@ -243,12 +257,12 @@ pub fn table_empty4_test() {
   |> should.equal([#("a", VTable([#("b", VTable([]))]))])
 }
 
-// pub fn date_test() {
-//   let str = "d = 1979-05-27"
+pub fn date_test() {
+  let str = "d = 1979-05-27"
 
-//   parse_toml(str)
-//   |> should.equal([#("more", VArray([VInteger(42), VInteger(42)]))])
-// }
+  parse_toml(str)
+  |> should.equal([#("d", VDatetime(RFC3339LocalDate(LocalDate(1979, 5, 27))))])
+}
 
 pub fn table_with_data_test() {
   let str =
