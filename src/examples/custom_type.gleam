@@ -33,6 +33,7 @@ pub type XCustomType {
     name: String,
     constructors: List(RecordConstructor),
     parameters: List(String),
+    doc: Option(String),
   )
 }
 
@@ -61,8 +62,24 @@ fn string_eof() {
   |> p.map(fn(_) { "" })
 }
 
-fn type_opener() {
-  s.string("pub type ")
+fn type_opener_with_comments() -> Parser(String, Option(String)) {
+  s.string("///")
+  |> p.chain(fn(_) { p.many_till(p.item(), c.char("\n")) })
+  |> p.chain_first(fn(_) { s.string("pub type ") })
+  |> p.map(fn(chars) {
+    chars
+    |> string.join("")
+    |> string.trim()
+    |> Some
+  })
+}
+
+fn type_opener() -> Parser(String, Option(String)) {
+  type_opener_with_comments()
+  |> p.alt(fn() {
+    s.string("pub type ")
+    |> p.map(fn(_) { None })
+  })
 }
 
 fn ignored_code_parser() -> Parser(String, IgnoredCode) {
@@ -313,7 +330,7 @@ fn custom_type_parameters_parser() -> Parser(String, List(String)) {
 
 fn custom_type_parser() -> Parser(String, XCustomType) {
   type_opener()
-  |> p.chain(fn(_) {
+  |> p.chain(fn(doc) {
     p.many1_till(
       p.item(),
       p.look_ahead(c.char("{"))
@@ -333,6 +350,7 @@ fn custom_type_parser() -> Parser(String, XCustomType) {
               |> string.trim(),
               constructors: constructors,
               parameters: parameters,
+              doc: doc,
             )
           })
         })

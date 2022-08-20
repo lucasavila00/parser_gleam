@@ -64,6 +64,7 @@ pub fn one_constructor_no_args_test() {
         name: "A",
         constructors: [RecordConstructor(name: "A", arguments: [])],
         parameters: [],
+        doc: None,
       ),
     ])
   })
@@ -83,9 +84,28 @@ pub fn two_constructors_no_args_test() {
           RecordConstructor(name: "B", arguments: []),
         ],
         parameters: [],
+        doc: None,
       ),
     ])
   })
+}
+
+pub fn docs_test() {
+  let str =
+    "
+/// derives: defunc
+pub type A{A}
+"
+
+  get_custom_types(str)
+  |> should.equal([
+    XCustomType(
+      name: "A",
+      constructors: [RecordConstructor(name: "A", arguments: [])],
+      parameters: [],
+      doc: Some("derives: defunc"),
+    ),
+  ])
 }
 
 pub fn one_constructor_with_args_test() {
@@ -107,6 +127,7 @@ pub fn one_constructor_with_args_test() {
         ),
       ],
       parameters: [],
+      doc: None,
     ),
   ])
 }
@@ -133,6 +154,7 @@ pub fn constructor_irl_test() {
         ),
       ],
       [],
+      None,
     ),
   ])
 }
@@ -166,6 +188,7 @@ pub type ParseSuccess(i, a) {
         ),
       ],
       ["i", "a"],
+      None,
     ),
   ])
 }
@@ -198,6 +221,7 @@ pub type A {
         ),
       ],
       [],
+      None,
     ),
   ])
 }
