@@ -458,3 +458,37 @@ pub fn key1_test() {
   parse_toml(str)
   |> should.equal([#("empty", VInteger(1))])
 }
+
+pub fn inline_table3_test() {
+  let str =
+    "
+inline = {a.b = 42}
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("inline", VTable([#("a", VTable([#("b", VInteger(42))]))])),
+  ])
+}
+
+pub fn inline_table4_test() {
+  let str =
+    "
+b = {   \"a\".\"b\"  =  1   }
+"
+
+  parse_toml(str)
+  |> should.equal([#("b", VTable([#("a", VTable([#("b", VInteger(1))]))]))])
+}
+
+pub fn inline_table5_test() {
+  let str =
+    "
+c = {   a   .   b  =  1   }
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("inline", VTable([#("a", VTable([#("b", VInteger(42))]))])),
+  ])
+}

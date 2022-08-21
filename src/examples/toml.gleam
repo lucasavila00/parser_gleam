@@ -92,14 +92,26 @@ fn key_char() {
   |> p.alt(fn() { c.char("-") })
 }
 
+fn assignment_list_str(ks: List(String), v: Node) -> #(String, Node) {
+  case ks {
+    [k] -> #(k, v)
+    [k, ..ks] -> #(k, VTable([assignment_list_str(ks, v)]))
+  }
+}
+
 fn assignment() -> TomlParser(#(String, Node)) {
-  p.many1(key_char())
-  |> p.map(fn(it) {
-    it
-    |> join_nel()
-  })
-  |> p.alt(fn() { basic_str() })
-  |> p.chain(fn(k) {
+  p.sep_by1(
+    c.char("."),
+    p.many1(key_char())
+    |> p.map(fn(it) {
+      it
+      |> join_nel()
+    })
+    |> p.alt(fn() { basic_str() })
+    |> p.alt(fn() { literal_str() }),
+  )
+  |> p.map(nel.to_list)
+  |> p.chain(fn(ks) {
     p.many(is_whitespace())
     |> p.chain(fn(_) {
       c.char("=")
@@ -107,7 +119,7 @@ fn assignment() -> TomlParser(#(String, Node)) {
     })
     |> p.chain(fn(_) {
       value()
-      |> p.map(fn(v) { #(k, v) })
+      |> p.map(fn(v) { assignment_list_str(ks, v) })
     })
   })
 }
