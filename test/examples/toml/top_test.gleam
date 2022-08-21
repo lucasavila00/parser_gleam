@@ -1,6 +1,7 @@
 import gleeunit/should
 import examples/toml.{
-  VArray, VBoolean, VDatetime, VInteger, VString, VTArray, VTable,
+  FloatNumeric, Inf, NaN, VArray, VBoolean, VDatetime, VFloat, VInteger, VNegative,
+  VNone, VPositive, VString, VTArray, VTable,
 }
 import examples/rfc_3339.{
   Datetime, LocalDate, LocalTime, RFC3339Datetime, RFC3339LocalDate, TimezoneZulu,
@@ -515,5 +516,45 @@ many.dots = {a.b.c = 1, a.b.d = 2}
         ),
       ]),
     ),
+  ])
+}
+
+pub fn non_numeric_floats_test() {
+  let str =
+    "
+nan = nan
+nan_neg = -nan
+nan_plus = +nan
+infinity = inf
+infinity_neg = -inf
+infinity_plus = +inf
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("nan", VFloat(NaN(VNone))),
+    #("nan_neg", VFloat(NaN(VNegative))),
+    #("nan_plus", VFloat(NaN(VPositive))),
+    #("infinity", VFloat(Inf(VNone))),
+    #("infinity_neg", VFloat(Inf(VNegative))),
+    #("infinity_plus", VFloat(Inf(VPositive))),
+  ])
+}
+
+pub fn floats_test() {
+  let str =
+    "
+pi = 3.14
+pospi = +3.14
+negpi = -3.14
+zero-intpart = 0.123
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("pi", VFloat(FloatNumeric(3.14))),
+    #("pospi", VFloat(FloatNumeric(3.14))),
+    #("negpi", VFloat(FloatNumeric(-3.14))),
+    #("zero-intpart", VFloat(FloatNumeric(0.123))),
   ])
 }

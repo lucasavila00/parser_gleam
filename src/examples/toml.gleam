@@ -18,12 +18,32 @@ pub type Explicitness {
   Implicit
 }
 
+pub type Positiveness {
+  VNone
+  VPositive
+  VNegative
+}
+
+pub fn positiveness_to_string(p: Positiveness) -> String {
+  case p {
+    VNone -> ""
+    VPositive -> "+"
+    VNegative -> "-"
+  }
+}
+
+pub type ExtendedFloat {
+  FloatNumeric(Float)
+  Inf(Positiveness)
+  NaN(Positiveness)
+}
+
 pub type Node {
   VTable(Table)
   VTArray(List(Table))
   VString(String)
   VInteger(Int)
-  VFloat(Float)
+  VFloat(ExtendedFloat)
   VBoolean(Bool)
   VDatetime(rfc_3339.RFC3339)
   VArray(List(Node))
@@ -470,6 +490,19 @@ fn integer_base_10_str() -> TomlParser(String) {
   })
 }
 
+fn signed_positiveness() {
+  s.string("-")
+  |> p.map(fn(_) { VNegative })
+  |> p.alt(fn() {
+    c.char("+")
+    |> p.map(fn(_) { VPositive })
+  })
+  |> p.alt(fn() {
+    p.of("")
+    |> p.map(fn(_) { VNone })
+  })
+}
+
 // TODO extend float such that it supports inf and NAN, gleam test for floats
 fn float() -> TomlParser(Node) {
   integer_base_10_str()
@@ -488,10 +521,24 @@ fn float() -> TomlParser(Node) {
           |> string.join("")
           |> float.parse()
         {
-          Ok(f) -> p.of(VFloat(f))
+          Ok(f) -> p.of(VFloat(FloatNumeric(f)))
           Error(_) -> p.fail()
         }
       })
+    })
+  })
+  |> p.alt(fn() {
+    signed_positiveness()
+    |> p.chain(fn(sign) {
+      s.string("nan")
+      |> p.map(fn(_) { VFloat(NaN(sign)) })
+    })
+  })
+  |> p.alt(fn() {
+    signed_positiveness()
+    |> p.chain(fn(sign) {
+      s.string("inf")
+      |> p.map(fn(_) { VFloat(Inf(sign)) })
     })
   })
 }

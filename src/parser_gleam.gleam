@@ -8,6 +8,7 @@ import parser_gleam/string as s
 import gleam/json.{Json}
 import gleam/list
 import gleam/int
+import gleam/string
 
 fn parse_toml(it: String) {
   try r =
@@ -55,9 +56,15 @@ fn node_to_json(node: Node) -> Json {
     toml.VFloat(it) ->
       with_type_info(
         "float",
-        it
-        |> json.float()
-        |> json.to_string(),
+        case it {
+          toml.FloatNumeric(it) ->
+            it
+            |> json.float()
+            |> json.to_string()
+          toml.NaN(_) -> "nan"
+          toml.Inf(pos) ->
+            string.concat([toml.positiveness_to_string(pos), "inf"])
+        },
       )
     toml.VBoolean(it) ->
       with_type_info(
