@@ -18,6 +18,8 @@ import gleam/string_builder.{StringBuilder} as sb
 import gleam/dynamic.{DecodeError, DecodeErrors, Dynamic}
 import gleam/string
 
+// TODO: docs
+
 // -------------------------------------------------------------------------------------
 // json printer
 // -------------------------------------------------------------------------------------
