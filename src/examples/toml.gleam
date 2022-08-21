@@ -10,6 +10,8 @@ import gleam/set
 import gleam/result
 import fp_gl/non_empty_list as nel
 
+// TODO: remove asserts
+
 // -------------------------------------------------------------------------------------
 // toml - model
 // -------------------------------------------------------------------------------------
@@ -172,6 +174,14 @@ fn deep_merge_inline_table(it: Table) -> Table {
   |> list.reverse()
 }
 
+fn inline_table_end() {
+  c.char("}")
+  |> p.chain_first(fn(_) {
+    skip_blanks()
+    |> p.map(fn(_) { "" })
+  })
+}
+
 fn inline_table() -> TomlParser(Node) {
   let skip_spaces = p.many(is_whitespace())
   let comma =
@@ -192,7 +202,7 @@ fn inline_table() -> TomlParser(Node) {
   skip_spaces
   |> p.chain(fn(_) { separated_values })
   |> p.chain_first(fn(_) { skip_spaces })
-  |> p.between(c.char("{"), c.char("}"))
+  |> p.between(c.char("{"), inline_table_end())
   |> p.map(deep_merge_inline_table)
   |> p.map(VTable)
 }
@@ -279,6 +289,14 @@ fn value() -> TomlParser(Node) {
   |> p.alt(fn() { inline_table() })
 }
 
+fn array_end() {
+  c.char("]")
+  |> p.chain_first(fn(_) {
+    skip_blanks()
+    |> p.map(fn(_) { "" })
+  })
+}
+
 fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {
   let comma =
     skip_blanks()
@@ -291,36 +309,19 @@ fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {
   |> p.chain(fn(_) { separated_values })
   |> p.chain_first(fn(_) { p.optional(comma) })
   |> p.chain_first(fn(_) { p.many(is_whitespace()) })
-  |> p.between(c.char("["), c.char("]"))
+  |> p.between(c.char("["), array_end())
   |> p.map(VArray)
 }
 
 fn array() -> TomlParser(Node) {
-  array_of(boolean())
-  |> p.alt(fn() {
-    array()
-    |> array_of()
-  })
-  |> p.alt(fn() {
-    any_str()
-    |> array_of()
-  })
-  |> p.alt(fn() {
-    datetime()
-    |> array_of()
-  })
-  |> p.alt(fn() {
-    float()
-    |> array_of()
-  })
-  |> p.alt(fn() {
-    integer()
-    |> array_of()
-  })
-  |> p.alt(fn() {
-    inline_table()
-    |> array_of()
-  })
+  boolean()
+  |> p.alt(fn() { array() })
+  |> p.alt(fn() { any_str() })
+  |> p.alt(fn() { datetime() })
+  |> p.alt(fn() { float() })
+  |> p.alt(fn() { integer() })
+  |> p.alt(fn() { inline_table() })
+  |> array_of()
 }
 
 fn boolean() -> TomlParser(Node) {
@@ -406,6 +407,10 @@ fn multi_basic_str() -> TomlParser(String) {
             p.look_ahead(c.char(","))
             |> p.map(fn(_) { Nil })
           })
+          |> p.alt(fn() {
+            p.look_ahead(c.char("]"))
+            |> p.map(fn(_) { Nil })
+          })
         }),
       )
       |> p.map(fn(it) {
@@ -451,6 +456,10 @@ fn multi_literal_str() -> TomlParser(String) {
         })
         |> p.alt(fn() {
           p.look_ahead(c.char(","))
+          |> p.map(fn(_) { Nil })
+        })
+        |> p.alt(fn() {
+          p.look_ahead(c.char("]"))
           |> p.map(fn(_) { Nil })
         })
       }),

@@ -38,6 +38,7 @@ pub fn string(s: String) -> Parser(Char, String) {
     p.chain_rec(
       s,
       fn(acc) {
+        // TODO: does string first exist?
         case char_at(0, acc) {
           None -> p.of(Ok(s))
           Some(ch) ->

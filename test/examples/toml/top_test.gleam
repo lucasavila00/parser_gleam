@@ -19,6 +19,55 @@ fn parse_toml(str: String) {
   |> io.debug
 }
 
+pub fn irl1_test() {
+  let str =
+    "
+name = \"parser_gleam\"
+version = \"0.0.4\"
+
+licences = [\"AGPL-3.0-or-later\"]
+description = \"A porting of parser-ts, purescript-eulalie to Gleam\"
+repository = { type = \"github\", user = \"lucasavila00\", repo = \"parser_gleam\" }
+
+[dependencies]
+gleam_stdlib = \"~> 0.22\"
+fp_gl = \"~> 0.0\"
+rad = \"~> 0.1\"
+
+[dev-dependencies]
+gleeunit = \"~> 0.6\"
+
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("name", VString("parser_gleam")),
+    #("version", VString("0.0.4")),
+    #("licences", VArray([VString("AGPL-3.0-or-later")])),
+    #(
+      "description",
+      VString("A porting of parser-ts, purescript-eulalie to Gleam"),
+    ),
+    #(
+      "repository",
+      VTable([
+        #("type", VString("github")),
+        #("user", VString("lucasavila00")),
+        #("repo", VString("parser_gleam")),
+      ]),
+    ),
+    #(
+      "dependencies",
+      VTable([
+        #("gleam_stdlib", VString("~> 0.22")),
+        #("fp_gl", VString("~> 0.0")),
+        #("rad", VString("~> 0.1")),
+      ]),
+    ),
+    #("dev-dependencies", VTable([#("gleeunit", VString("~> 0.6"))])),
+  ])
+}
+
 pub fn empty_test() {
   let str = ""
 
@@ -556,5 +605,49 @@ zero-intpart = 0.123
     #("pospi", VFloat(FloatNumeric(3.14))),
     #("negpi", VFloat(FloatNumeric(-3.14))),
     #("zero-intpart", VFloat(FloatNumeric(0.123))),
+  ])
+}
+
+pub fn comments_test() {
+  let str =
+    "
+arr3 = [\"\"\"###\"\"\"]
+"
+
+  parse_toml(str)
+  |> should.equal([#("arr3", VArray([VString("###")]))])
+}
+
+pub fn array1_test() {
+  let str =
+    "
+a=[1,[1]]
+"
+
+  parse_toml(str)
+  |> should.equal([#("a", VArray([VInteger(1), VArray([VInteger(1)])]))])
+}
+
+pub fn comments2_test() {
+  let str =
+    "
+arr5 = [[1]
+]
+"
+
+  parse_toml(str)
+  |> should.equal([#("arr5", VArray([VArray([VInteger(1)])]))])
+}
+
+pub fn array2_test() {
+  let str =
+    "
+contributors = [{ name = \"Baz Qux\" }
+]
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("contributors", VArray([VTable([#("name", VString("Baz Qux"))])])),
   ])
 }

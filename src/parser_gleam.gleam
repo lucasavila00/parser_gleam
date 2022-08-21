@@ -10,6 +10,7 @@ import gleam/list
 import gleam/int
 import gleam/string
 
+// TODO move to TOML/types file
 fn parse_toml(it: String) {
   try r =
     toml_doc_parser()
