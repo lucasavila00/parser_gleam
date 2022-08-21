@@ -1,6 +1,6 @@
 import parsers/toml/model.{
-  FloatNumeric, Inf, NaN, Node, Table, TableRow, VArray, VBoolean, VDatetime, VFloat,
-  VInteger, VNegative, VNone, VPositive, VString, VTable, positiveness_to_string,
+  FloatNumeric, Inf, NaN, Node, Table, VArray, VBoolean, VDatetime, VFloat, VInteger,
+  VNegative, VNone, VPositive, VString, VTArray, VTable, positiveness_to_string,
 }
 import parsers/rfc_3339.{
   RFC3339Datetime, RFC3339LocalDate, RFC3339LocalDatetime, RFC3339LocalTime,
@@ -11,9 +11,9 @@ import gleam/int
 import gleam/result
 import gleam/float
 import gleam/map
-import gleam/io
+import gleam/option.{None, Option, Some}
 import gleam/string_builder.{StringBuilder} as sb
-import gleam/dynamic.{DecodeErrors, Dynamic}
+import gleam/dynamic.{DecodeError, DecodeErrors, Dynamic}
 import gleam/string
 
 // -------------------------------------------------------------------------------------
@@ -164,7 +164,7 @@ fn table_row_typed_decoder(it: Dynamic) -> Result(Node, DecodeErrors) {
       |> result.then(fn(str) {
         case rfc_3339.parse(str) {
           Ok(p) -> Ok(VDatetime(p))
-          Error(e) -> Error([])
+          Error(_) -> Error([DecodeError("rfc_3339", str, [])])
         }
       })
   }
@@ -173,8 +173,18 @@ fn table_row_typed_decoder(it: Dynamic) -> Result(Node, DecodeErrors) {
 fn table_row_decoder(it: Dynamic) -> Result(Node, DecodeErrors) {
   table_row_typed_decoder(it)
   |> result.lazy_or(fn() {
+    it
+    |> dynamic.list(json_toml_doc_decoder)
+    |> result.map(VTArray)
+  })
+  |> result.lazy_or(fn() {
     json_toml_doc_decoder(it)
     |> result.map(VTable)
+  })
+  |> result.lazy_or(fn() {
+    it
+    |> dynamic.list(table_row_decoder)
+    |> result.map(VArray)
   })
 }
 
@@ -201,20 +211,86 @@ fn escape_string(it: String) -> StringBuilder {
   |> sb.from_string()
 }
 
-fn add_assignment(to: StringBuilder, k: String) -> StringBuilder {
+fn add_assignment(to: StringBuilder, k: Option(String)) -> StringBuilder {
+  case k {
+    Some(k) ->
+      [sb.from_string(k), sb.from_string(" = "), to, sb.from_string("\n")]
+      |> sb.concat()
+
+    None -> to
+  }
+}
+
+fn print_table_node(
+  k: String,
+  table: Table,
+  table_parents: List(String),
+) -> StringBuilder {
+  let parents = list.append(table_parents, [k])
   [
-    sb.from_string(k),
-    " = "
-    |> sb.from_string(),
-    to,
+    sb.from_string("["),
+    sb.from_string(
+      parents
+      |> list.map(fn(k) {
+        k
+        |> json.string()
+        |> json.to_string()
+      })
+      |> string.join("."),
+    ),
+    sb.from_string("]"),
+    sb.from_string("\n"),
+    print_table_contents(table, parents),
   ]
   |> sb.concat()
 }
 
-fn print_node(k: String, it: Node) -> StringBuilder {
+fn print_table_array_node(
+  k: String,
+  table_list: List(Table),
+  table_parents: List(String),
+) -> StringBuilder {
+  let parents = list.append(table_parents, [k])
+  table_list
+  |> list.map(fn(table) {
+    [
+      sb.from_string("[["),
+      sb.from_string(
+        parents
+        |> list.map(fn(k) {
+          k
+          |> json.string()
+          |> json.to_string()
+        })
+        |> string.join("."),
+      ),
+      sb.from_string("]]"),
+      sb.from_string("\n"),
+      print_table_contents(table, parents),
+    ]
+  })
+  |> list.flatten()
+  |> sb.concat()
+}
+
+fn print_node(
+  k: Option(String),
+  it: Node,
+  table_parents: List(String),
+) -> StringBuilder {
   case it {
-    model.VTable(vt) -> todo
-    model.VTArray(_) -> todo
+    model.VTable(table) ->
+      case k {
+        Some(k) -> print_table_node(k, table, table_parents)
+        None -> todo
+      }
+
+    model.VTArray(vta) ->
+      case k {
+        Some(k) -> print_table_array_node(k, vta, table_parents)
+        None -> todo
+      }
+
     model.VString(s) ->
       escape_string(s)
       |> add_assignment(k)
@@ -247,15 +323,29 @@ fn print_node(k: String, it: Node) -> StringBuilder {
       rfc_3339.print(d)
       |> sb.from_string()
       |> add_assignment(k)
-    model.VArray(_) -> todo
+    model.VArray(ns) ->
+      [
+        sb.from_string("["),
+        sb.from_string(
+          ns
+          |> list.map(fn(node) {
+            print_node(None, node, [])
+            |> sb.to_string()
+          })
+          |> string.join(", "),
+        ),
+        sb.from_string("]"),
+      ]
+      |> sb.concat()
+      |> add_assignment(k)
   }
 }
 
-fn print_table(it: Table) -> StringBuilder {
+fn print_table_contents(it: Table, table_parents: List(String)) -> StringBuilder {
   it
   |> list.map(fn(row) {
     let #(k, v) = row
-    [print_node(k, v), sb.from_string("\n")]
+    [print_node(Some(k), v, table_parents)]
     |> sb.concat()
   })
   |> sb.concat()
@@ -263,6 +353,6 @@ fn print_table(it: Table) -> StringBuilder {
 
 pub fn print(it: Table) -> String {
   it
-  |> print_table()
+  |> print_table_contents([])
   |> sb.to_string()
 }
