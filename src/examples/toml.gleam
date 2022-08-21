@@ -175,11 +175,12 @@ fn deep_merge_inline_table(it: Table) -> Table {
 }
 
 fn inline_table_end() {
-  c.char("}")
-  |> p.chain_first(fn(_) {
-    skip_blanks()
-    |> p.map(fn(_) { "" })
+  skip_blanks()
+  |> p.chain(fn(_) {
+    c.char("}")
+    |> p.chain(fn(_) { skip_blanks() })
   })
+  |> p.map(fn(_) { "" })
 }
 
 fn inline_table() -> TomlParser(Node) {
@@ -290,11 +291,12 @@ fn value() -> TomlParser(Node) {
 }
 
 fn array_end() {
-  c.char("]")
-  |> p.chain_first(fn(_) {
-    skip_blanks()
-    |> p.map(fn(_) { "" })
+  skip_blanks()
+  |> p.chain(fn(_) {
+    c.char("]")
+    |> p.chain(fn(_) { skip_blanks() })
   })
+  |> p.map(fn(_) { "" })
 }
 
 fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {

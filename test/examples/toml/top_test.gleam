@@ -651,3 +651,14 @@ contributors = [{ name = \"Baz Qux\" }
     #("contributors", VArray([VTable([#("name", VString("Baz Qux"))])])),
   ])
 }
+
+pub fn array3_test() {
+  let str =
+    "
+title = [\"Code: XXXX\"
+]
+"
+
+  parse_toml(str)
+  |> should.equal([#("title", VArray([VString("Code: XXXX")]))])
+}
