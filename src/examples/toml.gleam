@@ -567,8 +567,8 @@ fn is_hex(c: c.Char) -> Bool {
 const max_unicode = 1_114_111
 
 if erlang {
-  external fn do_to_unicode_char(List(Int)) -> c.Char =
-    "parser_gleam" "to_unicode_str"
+  external fn do_to_unicode_char(Int) -> c.Char =
+    "parser_gleam_ffi" "to_unicode_str"
 }
 
 fn to_unicode_char(lst: List(Int)) -> c.Char {
@@ -577,7 +577,7 @@ fn to_unicode_char(lst: List(Int)) -> c.Char {
     |> int.undigits(16)
   assert True = value <= max_unicode
 
-  do_to_unicode_char(lst)
+  do_to_unicode_char(value)
 }
 
 fn unixcode_hex_8() -> TomlParser(c.Char) {
@@ -642,7 +642,7 @@ pub fn esc_seq() -> TomlParser(c.Char) {
     |> p.alt(fn() { c.char("/") })
     |> p.alt(fn() {
       c.char("b")
-      |> p.map(fn(_) { "\\b" })
+      |> p.map(fn(_) { to_unicode_char([0, 0, 0, 8]) })
     })
     |> p.alt(fn() {
       c.char("t")

@@ -1,4 +1,4 @@
-gleam build --target javascript && \
+gleam build --target erlang && \
 clear &&\
 # toml-test scripts/toml.erl -run valid/integer/* && \
 # toml-test scripts/toml.erl -run valid/bool/* && \

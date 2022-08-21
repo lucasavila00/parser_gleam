@@ -16,6 +16,7 @@ read_stdin(A) ->
     end.
 
 main([]) ->
+    io:setopts([{encoding, unicode}]),
     true = code:add_pathz("/workspaces/parser_gleam/build/dev/erlang/parser_gleam/ebin"),
     true = code:add_pathz("/workspaces/parser_gleam/build/dev/erlang/gleam_stdlib/ebin"),
     true = code:add_pathz("/workspaces/parser_gleam/build/dev/erlang/fp_gl/ebin"),
