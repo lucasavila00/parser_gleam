@@ -6,6 +6,7 @@ import gleam/string
 import gleam/list
 import gleam/int
 import gleam/set
+import gleam/io
 import gleam/result
 import fp_gl/non_empty_list as nel
 
@@ -377,6 +378,14 @@ fn multi_basic_str() -> TomlParser(String) {
         |> p.chain(fn(_) {
           end_of_line()
           |> p.alt(fn() { p.eof() })
+          |> p.alt(fn() {
+            p.look_ahead(c.char("}"))
+            |> p.map(fn(_) { Nil })
+          })
+          |> p.alt(fn() {
+            p.look_ahead(c.char(","))
+            |> p.map(fn(_) { Nil })
+          })
         }),
       )
       |> p.map(fn(it) {
