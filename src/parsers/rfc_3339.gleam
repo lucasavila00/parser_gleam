@@ -1,5 +1,35 @@
+//// **Well tested**
+////
+//// RFC3339 is a date serialization format.
+////
+//// There is a function to parse:
+////
+//// ```gleam
+//// try parsed = rfc_3339.parse("00:00:00")
+//// try parsed = rfc_3339.parse("1970-01-01")
+//// try parsed = rfc_3339.parse("1970-01-01T00:00:00")
+//// try parsed = rfc_3339.parse("1970-01-01T00:00:00Z")
+//// try parsed = rfc_3339.parse("1970-01-01T00:00:00+00:00")
+//// ```
+////
+//// And a function to print:
+//// ```gleam
+//// rfc_3339.print(RFC3339LocalTime(LocalTime(0, 0, 0, None)))
+//// |> io.debug()
+//// ```
+////
+//// The parser-combinator is public:
+//// ```gleam
+//// fn value() -> MyParser(Node) {
+////   string() |> p.map(VString)
+////   |> p.alt(fn() { rfc_3339.parser() |> p.map(VDateTime) })
+//// }
+//// ```
+////
+
 import parser_gleam/parser as p
 import parser_gleam/char as c
+import parser_gleam/string as s
 import gleam/string
 import gleam/int
 import gleam/result
@@ -345,7 +375,7 @@ fn datetime() -> RFC3339Parser(Datetime) {
   })
 }
 
-pub fn rfc_3339_parser() -> RFC3339Parser(RFC3339) {
+pub fn parser() -> RFC3339Parser(RFC3339) {
   datetime()
   |> p.map(RFC3339Datetime)
   |> p.alt(fn() {
@@ -360,6 +390,22 @@ pub fn rfc_3339_parser() -> RFC3339Parser(RFC3339) {
     local_time()
     |> p.map(RFC3339LocalTime)
   })
+}
+
+pub fn parse(it: String) -> Result(RFC3339, String) {
+  case
+    parser()
+    |> p.chain_first(fn(_) { p.eof() })
+    |> s.run(it)
+  {
+    Ok(s) -> Ok(s.value)
+    Error(e) ->
+      Error(string.concat([
+        "Failed to parse. Expected: ",
+        e.expected
+        |> string.join(", "),
+      ]))
+  }
 }
 
 // -------------------------------------------------------------------------------------
@@ -429,7 +475,7 @@ fn print_timezone(it: Timezone) -> String {
   }
 }
 
-pub fn print_rfc_3339(it: RFC3339) -> String {
+pub fn print(it: RFC3339) -> String {
   case it {
     RFC3339Datetime(Datetime(d, t, tz)) ->
       string.concat([

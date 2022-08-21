@@ -1,5 +1,5 @@
 import gleeunit/should
-import parsers/custom_type.{
+import parsers/lang/custom_type.{
   Constructor, Fn, Hole, RecordConstructorArg, Tuple, Var, record_constructor_argument_parser,
 }
 import parser_gleam/string as s

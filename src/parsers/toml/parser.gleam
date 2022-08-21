@@ -1,3 +1,69 @@
+//// **Well tested**
+////
+//// A parser for Tom's Obvious Minimal Language (toml).
+////
+//// That's the language gleam.toml is written on.
+////
+//// There is a function to parse:
+////
+//// ```gleam
+//// try parsed = parser.parse("[a]")
+//// ```
+////
+//// Given this source code:
+////
+//// ```toml
+//// name = "parser_gleam"
+//// version = "0.0.6"
+//// 
+//// licences = ["AGPL-3.0-or-later"]
+//// description = "A porting of parser-ts, purescript-eulalie to Gleam"
+//// repository = { type = "github", user = "lucasavila00", repo = "parser_gleam" }
+//// 
+//// [dependencies]
+//// gleam_stdlib = "~> 0.22"
+//// fp_gl = "~> 0.0"
+//// 
+//// [dev-dependencies]
+//// gleeunit = "~> 0.6"
+//// rad = "~> 0.1"
+//// 
+//// ```
+////
+//// This AST is produced:
+////
+//// ```gleam
+//// [
+//// #("name", VString("parser_gleam")),
+//// #("version", VString("0.0.6")),
+//// #("licences", VArray([VString("AGPL-3.0-or-later")])),
+//// #(
+////   "description",
+////   VString("A porting of parser-ts, purescript-eulalie to Gleam"),
+//// ),
+//// #(
+////   "repository",
+////   VTable([
+////     #("type", VString("github")),
+////     #("user", VString("lucasavila00")),
+////     #("repo", VString("parser_gleam")),
+////   ]),
+//// ),
+//// #(
+////   "dependencies",
+////   VTable([
+////     #("gleam_stdlib", VString("~> 0.22")),
+////     #("fp_gl", VString("~> 0.0")),
+////   ]),
+//// ),
+//// #(
+////   "dev-dependencies",
+////   VTable([#("gleeunit", VString("~> 0.6")), #("rad", VString("~> 0.1"))]),
+//// ),
+//// ]
+//// ```
+////
+
 import parser_gleam/parser as p
 import parser_gleam/char as c
 import parser_gleam/string as s
@@ -15,13 +81,14 @@ import gleam/result
 import fp_gl/non_empty_list as nel
 
 // TODO: remove asserts
+// TODO: run toml tests in CI
 
 // -------------------------------------------------------------------------------------
 // toml - model
 // -------------------------------------------------------------------------------------
 
 // TODO: Explicitness
-pub type Explicitness {
+type Explicitness {
   Explicit
   Implicit
 }
@@ -233,7 +300,7 @@ fn named_section() -> TomlParser(NamedSection) {
   })
 }
 
-pub fn table_header() -> TomlParser(List(String)) {
+fn table_header() -> TomlParser(List(String)) {
   header_value()
   |> p.between(c.char("["), c.char("]"))
 }
@@ -325,7 +392,7 @@ fn any_str_s() -> TomlParser(String) {
   |> p.alt(literal_str)
 }
 
-pub fn basic_str() -> TomlParser(String) {
+fn basic_str() -> TomlParser(String) {
   let str_char =
     esc_seq()
     |> p.alt(fn() { p.sat(fn(it) { it != "\"" && it != "\\" }) })
@@ -452,7 +519,7 @@ fn multi_literal_str() -> TomlParser(String) {
 }
 
 fn datetime() -> TomlParser(Node) {
-  rfc_3339.rfc_3339_parser()
+  rfc_3339.parser()
   |> p.map(VDatetime)
 }
 
@@ -774,7 +841,7 @@ fn unixcode_hex_4() -> TomlParser(c.Char) {
   })
 }
 
-pub fn esc_seq() -> TomlParser(c.Char) {
+fn esc_seq() -> TomlParser(c.Char) {
   c.char("\\")
   |> p.chain(fn(_) {
     c.char("\"")
@@ -910,7 +977,7 @@ fn load_into_top_table(top_table: Table, named_sections: List(NamedSection)) {
   |> list.fold(top_table, fn(p, c) { insert_named_section(p, c) })
 }
 
-pub fn toml_doc_parser() -> TomlParser(Table) {
+pub fn parser() -> TomlParser(Table) {
   skip_blanks()
   |> p.chain(fn(_) {
     table()
@@ -923,6 +990,22 @@ pub fn toml_doc_parser() -> TomlParser(Table) {
       })
     })
   })
+}
+
+pub fn parse(it: String) -> Result(Table, String) {
+  case
+    parser()
+    |> p.chain_first(fn(_) { p.eof() })
+    |> s.run(it)
+  {
+    Ok(s) -> Ok(s.value)
+    Error(e) ->
+      Error(string.concat([
+        "Failed to parse. Expected: ",
+        e.expected
+        |> string.join(", "),
+      ]))
+  }
 }
 
 fn join_nel(nel: nel.NonEmptyList(String)) {

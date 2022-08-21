@@ -1,7 +1,7 @@
 import parsers/toml/model.{Node, Table, VArray, VBoolean, VDatetime, VInteger}
-import parsers/toml/parser.{toml_doc_parser}
+import parsers/toml/parser.{parser} as toml
 import parsers/rfc_3339.{
-  RFC3339Datetime, RFC3339LocalDate, RFC3339LocalDatetime, RFC3339LocalTime, print_rfc_3339,
+  RFC3339Datetime, RFC3339LocalDate, RFC3339LocalDatetime, RFC3339LocalTime, print,
 }
 import parser_gleam/string as s
 import gleam/json.{Json}
@@ -12,7 +12,7 @@ import gleam/string
 // TODO move to TOML/types file
 fn parse_toml(it: String) {
   try r =
-    toml_doc_parser()
+    parser()
     |> s.run(it)
   Ok(r.value)
 }
@@ -75,11 +75,10 @@ fn node_to_json(node: Node) -> Json {
       )
     model.VDatetime(it) ->
       case it {
-        RFC3339Datetime(_) -> with_type_info("datetime", print_rfc_3339(it))
-        RFC3339LocalDatetime(_) ->
-          with_type_info("datetime-local", print_rfc_3339(it))
-        RFC3339LocalDate(_) -> with_type_info("date-local", print_rfc_3339(it))
-        RFC3339LocalTime(_) -> with_type_info("time-local", print_rfc_3339(it))
+        RFC3339Datetime(_) -> with_type_info("datetime", print(it))
+        RFC3339LocalDatetime(_) -> with_type_info("datetime-local", print(it))
+        RFC3339LocalDate(_) -> with_type_info("date-local", print(it))
+        RFC3339LocalTime(_) -> with_type_info("time-local", print(it))
       }
     model.VArray(it) -> json.array(it, node_to_json)
   }

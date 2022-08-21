@@ -1,5 +1,5 @@
 name = "parser_gleam"
-version = "0.0.5"
+version = "0.0.7"
 
 licences = ["AGPL-3.0-or-later"]
 description = "A porting of parser-ts, purescript-eulalie to Gleam"
@@ -8,7 +8,7 @@ repository = { type = "github", user = "lucasavila00", repo = "parser_gleam" }
 [dependencies]
 gleam_stdlib = "~> 0.22"
 fp_gl = "~> 0.0"
-rad = "~> 0.1"
 
 [dev-dependencies]
 gleeunit = "~> 0.6"
+rad = "~> 0.1"

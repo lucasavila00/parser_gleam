@@ -13,7 +13,7 @@ import parsers/toml/parser as toml
 
 fn parse_toml(str: String) {
   assert Ok(r) =
-    toml.toml_doc_parser()
+    toml.parser()
     |> s.run(str)
 
   r.value
@@ -33,10 +33,10 @@ repository = { type = \"github\", user = \"lucasavila00\", repo = \"parser_gleam
 [dependencies]
 gleam_stdlib = \"~> 0.22\"
 fp_gl = \"~> 0.0\"
-rad = \"~> 0.1\"
 
 [dev-dependencies]
 gleeunit = \"~> 0.6\"
+rad = \"~> 0.1\"
 
 "
 
@@ -62,10 +62,12 @@ gleeunit = \"~> 0.6\"
       VTable([
         #("gleam_stdlib", VString("~> 0.22")),
         #("fp_gl", VString("~> 0.0")),
-        #("rad", VString("~> 0.1")),
       ]),
     ),
-    #("dev-dependencies", VTable([#("gleeunit", VString("~> 0.6"))])),
+    #(
+      "dev-dependencies",
+      VTable([#("gleeunit", VString("~> 0.6")), #("rad", VString("~> 0.1"))]),
+    ),
   ])
 }
 

@@ -1,3 +1,37 @@
+//// **Experimental**
+//// 
+//// Parses type declaration of the Gleam language.
+////
+//// Given this source code:
+////
+//// ```gleam
+//// pub type A {
+////   B(c: String)
+//// }
+//// ```
+////
+//// This AST is produced:
+////
+//// ```gleam
+//// XCustomType(
+////   name: "A",
+////   constructors: [
+////     RecordConstructor(
+////       name: "B",
+////       arguments: [
+////         RecordConstructorArg(
+////           label: "c",
+////           ast: Constructor(module: None, name: "String", arguments: []),
+////         ),
+////       ],
+////     ),
+////   ],
+////   parameters: [],
+////   doc: None,
+//// )
+//// ```
+////
+
 import parser_gleam/char as c
 import parser_gleam/parser.{Parser} as p
 import parser_gleam/string as s
