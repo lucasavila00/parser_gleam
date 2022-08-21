@@ -2,7 +2,6 @@ import parser_gleam/parser as p
 import parser_gleam/char as c
 import parser_gleam/string as s
 import examples/rfc_3339
-import gleam/io
 import gleam/string
 import gleam/list
 import gleam/int
@@ -59,8 +58,7 @@ fn comment() {
     p.many_till(
       p.item(),
       p.alt(
-        p.sat(fn(it) { it == "\n" })
-        |> p.map(fn(_) { Nil }),
+        end_of_line(),
         fn() {
           p.look_ahead(p.eof())
           |> p.map(fn(_) { Nil })
@@ -71,10 +69,14 @@ fn comment() {
   })
 }
 
-fn blank() {
+fn blank_not_eol() {
   p.many1(is_whitespace())
   |> p.map(fn(_) { Nil })
   |> p.alt(comment)
+}
+
+fn blank() {
+  blank_not_eol()
   |> p.alt(end_of_line)
 }
 
@@ -277,8 +279,8 @@ fn multi_basic_str() -> TomlParser(String) {
       |> p.chain(fn(_) {
         p.many(s.one_of([" ", "\t"]))
         |> p.chain(fn(_) {
-          c.char("\n")
-          |> p.chain(fn(_) { p.many(s.one_of([" ", "\t", "\n"])) })
+          end_of_line()
+          |> p.chain(fn(_) { p.many(s.one_of([" ", "\t", "\n", "\r\n"])) })
         })
       }),
     )
@@ -295,7 +297,7 @@ fn multi_basic_str() -> TomlParser(String) {
   // Parse the a tripple-double quote, with possibly a newline attached
   let open_d_quote_3 =
     d_quote_3
-    |> p.chain_first(fn(_) { c.char("\n") })
+    |> p.chain_first(fn(_) { end_of_line() })
     |> p.alt(fn() { d_quote_3 })
 
   open_d_quote_3
@@ -322,8 +324,28 @@ fn literal_str() -> TomlParser(String) {
 }
 
 fn multi_literal_str() -> TomlParser(String) {
-  // TODO fix it
-  p.fail()
+  // Parse tripple-double quotes
+  let s_quote_3 = s.string("'''")
+
+  // Parse the a tripple-double quote, with possibly a newline attached
+  let open_s_quote_3 =
+    s_quote_3
+    |> p.chain_first(fn(_) { end_of_line() })
+    |> p.alt(fn() { s_quote_3 })
+
+  open_s_quote_3
+  |> p.chain(fn(_) {
+    p.many_till(
+      p.item(),
+      s_quote_3
+      |> p.chain_first(fn(_) { p.many(blank_not_eol()) })
+      |> p.chain(fn(_) { end_of_line() }),
+    )
+    |> p.map(fn(st) {
+      st
+      |> string.join("")
+    })
+  })
 }
 
 fn datetime() -> TomlParser(Node) {
@@ -535,19 +557,19 @@ pub fn esc_seq() -> TomlParser(c.Char) {
     })
     |> p.alt(fn() {
       c.char("t")
-      |> p.map(fn(_) { "\\t" })
+      |> p.map(fn(_) { "\t" })
     })
     |> p.alt(fn() {
       c.char("n")
-      |> p.map(fn(_) { "\\n" })
+      |> p.map(fn(_) { "\n" })
     })
     |> p.alt(fn() {
       c.char("f")
-      |> p.map(fn(_) { "\\f" })
+      |> p.map(fn(_) { "\f" })
     })
     |> p.alt(fn() {
       c.char("r")
-      |> p.map(fn(_) { "\\r" })
+      |> p.map(fn(_) { "\r" })
     })
   })
   //   TODO unicode

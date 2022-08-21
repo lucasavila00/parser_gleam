@@ -3,12 +3,11 @@ import examples/toml.{
   VArray, VBoolean, VDatetime, VInteger, VString, VTArray, VTable,
 }
 import examples/rfc_3339.{
-  Datetime, LocalDate, LocalDatetime, LocalTime, RFC3339Datetime, RFC3339LocalDate,
-  RFC3339LocalDatetime, RFC3339LocalTime, TimezoneNegative, TimezonePositive, TimezoneZulu,
+  Datetime, LocalDate, LocalTime, RFC3339Datetime, RFC3339LocalDate, TimezoneZulu,
 }
 import parser_gleam/string as s
 import gleam/io
-import gleam/option.{None, Some}
+import gleam/option.{None}
 
 fn parse_toml(str: String) {
   assert Ok(r) =
@@ -391,3 +390,46 @@ four = \"\"\"# no comment
     ),
   ])
 }
+
+pub fn multiline_literal_quote_test() {
+  let str =
+    "
+lit_one = ''''one quote'''' 
+lit_two = ''' 'one quote' '''
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("lit_one", VString("'one quote'")),
+    #("lit_two", VString(" 'one quote' ")),
+  ])
+}
+
+pub fn multiline2_literal_quote_test() {
+  let str =
+    "
+one = \"\"\"\"one quote\"\"\"\"
+"
+
+  parse_toml(str)
+  |> should.equal([#("lit_one", VString("'one quote'"))])
+}
+// # Make sure that quotes inside multiline strings are allowed, including right
+// # after the opening '''/\"\"\" and before the closing '''/\"\"\"
+
+// lit_one = ''''one quote''''
+// lit_two = '''''two quotes'''''
+// lit_one_space = ''' 'one quote' '''
+// lit_two_space = ''' ''two quotes'' '''
+
+// one = \"\"\"\"one quote\"\"\"\"
+// two = \"\"\"\"\"two quotes\"\"\"\"\"
+// one_space = \"\"\" \"one quote\" \"\"\"
+// two_space = \"\"\" \"\"two quotes\"\" \"\"\"
+
+// mismatch1 = \"\"\"aaa'''bbb\"\"\"
+// mismatch2 = '''aaa\"\"\"bbb'''
+
+// # Three opening \"\"\", then one escaped \", then two \"\" (allowed), and then three
+// # closing \"\"\"
+// escaped = \"\"\"lol\\\"\"\"\"\"\"
