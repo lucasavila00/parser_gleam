@@ -94,6 +94,11 @@ fn key_char() {
 
 fn assignment() -> TomlParser(#(String, Node)) {
   p.many1(key_char())
+  |> p.map(fn(it) {
+    it
+    |> join_nel()
+  })
+  |> p.alt(fn() { basic_str() })
   |> p.chain(fn(k) {
     p.many(is_whitespace())
     |> p.chain(fn(_) {
@@ -102,7 +107,7 @@ fn assignment() -> TomlParser(#(String, Node)) {
     })
     |> p.chain(fn(_) {
       value()
-      |> p.map(fn(v) { #(join_nel(k), v) })
+      |> p.map(fn(v) { #(k, v) })
     })
   })
 }

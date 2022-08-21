@@ -446,7 +446,15 @@ nested_empty = {\"empty\"={}}
 "
 
   parse_toml(str)
-  |> should.equal([
-    #("a", VTable([#("a", VBoolean(True)), #("b", VBoolean(False))])),
-  ])
+  |> should.equal([#("nested_empty", VTable([#("empty", VTable([]))]))])
+}
+
+pub fn key1_test() {
+  let str =
+    "
+\"empty\"=1
+"
+
+  parse_toml(str)
+  |> should.equal([#("empty", VInteger(1))])
 }
