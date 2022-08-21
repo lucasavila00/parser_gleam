@@ -1,9 +1,9 @@
 import gleeunit/should
-import examples/toml.{
+import parsers/toml.{
   FloatNumeric, Inf, NaN, VArray, VBoolean, VDatetime, VFloat, VInteger, VNegative,
   VNone, VPositive, VString, VTArray, VTable,
 }
-import examples/rfc_3339.{
+import parsers/rfc_3339.{
   Datetime, LocalDate, LocalTime, RFC3339Datetime, RFC3339LocalDate, TimezoneZulu,
 }
 import parser_gleam/string as s

@@ -1,5 +1,5 @@
 import gleeunit/should
-import examples/rfc_3339.{
+import parsers/rfc_3339.{
   Datetime, LocalDate, LocalDatetime, LocalTime, RFC3339Datetime, RFC3339LocalDate,
   RFC3339LocalDatetime, RFC3339LocalTime, TimezoneNegative, TimezonePositive, TimezoneZulu,
 }

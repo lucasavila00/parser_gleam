@@ -1,7 +1,7 @@
-import examples/toml.{
+import parsers/toml.{
   Node, Table, VArray, VBoolean, VDatetime, VInteger, toml_doc_parser,
 }
-import examples/rfc_3339.{
+import parsers/rfc_3339.{
   RFC3339Datetime, RFC3339LocalDate, RFC3339LocalDatetime, RFC3339LocalTime, print_rfc_3339,
 }
 import parser_gleam/string as s

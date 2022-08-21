@@ -1,7 +1,7 @@
 import parser_gleam/parser as p
 import parser_gleam/char as c
 import parser_gleam/string as s
-import examples/rfc_3339
+import parsers/rfc_3339
 import gleam/string
 import gleam/list
 import gleam/int
