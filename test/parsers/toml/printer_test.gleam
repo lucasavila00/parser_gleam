@@ -26,8 +26,8 @@ pub fn bool_test() {
 
   to_toml(str)
   |> should.equal(
-    "f = false
-t = true
+    "\"t\" = true
+\"f\" = false
 ",
   )
 }
@@ -46,7 +46,7 @@ pub fn str_test() {
 
   to_toml(str)
   |> should.equal(
-    "f = \"Ávila\"
+    "\"f\" = \"Ávila\"
 ",
   )
 }
@@ -96,7 +96,7 @@ pub fn table_array_test() {
   |> should.equal(
     "[\"albums\"]
 [[\"albums\".\"songs\"]]
-name = \"Glory Days\"
+\"name\" = \"Glory Days\"
 ",
   )
 }
@@ -120,7 +120,7 @@ pub fn array_test() {
 
   to_toml(str)
   |> should.equal(
-    "songs = [false, true]
+    "\"songs\" = [false, true]
 ",
   )
 }
@@ -137,7 +137,7 @@ pub fn array_empty_test() {
 
   to_toml(str)
   |> should.equal(
-    "songs = [[]]
+    "\"songs\" = [[]]
 ",
   )
 }

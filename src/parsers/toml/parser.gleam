@@ -613,6 +613,7 @@ fn integer_base_10() -> TomlParser(Node) {
   })
 }
 
+// TODO don't swallow errors
 fn flatten_result_list(it: List(Result(a, b))) {
   it
   |> list.fold_right(

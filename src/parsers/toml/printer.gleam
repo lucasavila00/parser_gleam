@@ -9,6 +9,7 @@ import gleam/json.{Json}
 import gleam/list
 import gleam/int
 import gleam/result
+import gleam/order
 import gleam/float
 import gleam/io
 import gleam/map
@@ -244,7 +245,7 @@ fn add_assignment(
   }
   case k {
     Some(k) ->
-      [sb.from_string(k), sb.from_string(" = "), to, break]
+      [escape_string(k), sb.from_string(" = "), to, break]
       |> sb.concat()
 
     None -> to
@@ -391,6 +392,23 @@ fn print_node(
 
 fn print_table_contents(it: Table, table_parents: List(String)) -> StringBuilder {
   it
+  |> list.sort(fn(a, b) {
+    let #(_, a) = a
+    let #(_, b) = b
+
+    case a {
+      model.VTable(_) | model.VTArray(_) ->
+        case b {
+          model.VTable(_) | model.VTArray(_) -> order.Eq
+          _ -> order.Gt
+        }
+      _ ->
+        case b {
+          model.VTable(_) | model.VTArray(_) -> order.Lt
+          _ -> order.Eq
+        }
+    }
+  })
   |> list.map(fn(row) {
     let #(k, v) = row
     [print_node(Some(k), v, table_parents, True)]
