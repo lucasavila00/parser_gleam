@@ -52,7 +52,13 @@ fn node_to_json(node: Node) -> Json {
         it
         |> int.to_string(),
       )
-    toml.VFloat(it) -> todo
+    toml.VFloat(it) ->
+      with_type_info(
+        "float",
+        it
+        |> json.float()
+        |> json.to_string(),
+      )
     toml.VBoolean(it) ->
       with_type_info(
         "bool",

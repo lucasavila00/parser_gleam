@@ -5,8 +5,8 @@ import examples/rfc_3339
 import gleam/string
 import gleam/list
 import gleam/int
+import gleam/float
 import gleam/set
-import gleam/io
 import gleam/result
 import fp_gl/non_empty_list as nel
 
@@ -425,6 +425,14 @@ fn multi_literal_str() -> TomlParser(String) {
       |> p.chain(fn(_) {
         end_of_line()
         |> p.alt(fn() { p.eof() })
+        |> p.alt(fn() {
+          p.look_ahead(c.char("}"))
+          |> p.map(fn(_) { Nil })
+        })
+        |> p.alt(fn() {
+          p.look_ahead(c.char(","))
+          |> p.map(fn(_) { Nil })
+        })
       }),
     )
     |> p.map(fn(st) {
@@ -439,41 +447,13 @@ fn datetime() -> TomlParser(Node) {
   |> p.map(VDatetime)
 }
 
-fn float() -> TomlParser(Node) {
-  //   let sign =
-  //     s.string("-")
-  //     |> p.alt(fn() {
-  //       c.char("+")
-  //       |> p.map(fn(_) { "" })
-  //     })
-
-  //   let uint_str =
-  //     c.digit()
-  //     |> p.chain(fn(d) {
-  //       p.many(
-  //         p.optional(c.char("_"))
-  //         |> p.chain(fn(_) { c.digit() }),
-  //       )
-  //       |> p.map(fn(ds) { [d, ..ds] })
-  //     })
-
-  //   let int_str =
-  //     sign
-  //     |> p.chain(fn(s) {
-  //       uint_str
-  //       |> p.map(fn(u) { [s, ..u] })
-  //     })
-  // TODO fix it
-  p.fail()
-}
-
 fn signed() {
   s.string("-")
   |> p.alt(fn() { c.char("+") })
   |> p.alt(fn() { p.of("") })
 }
 
-fn integer_base_10() -> TomlParser(Node) {
+fn integer_base_10_str() -> TomlParser(String) {
   signed()
   |> p.chain(fn(sign) {
     c.digit()
@@ -482,19 +462,51 @@ fn integer_base_10() -> TomlParser(Node) {
         p.optional(c.char("_"))
         |> p.chain(fn(_) { c.digit() }),
       )
-      |> p.map(fn(ds) { [sign, d, ..ds] })
-    })
-    |> p.chain(fn(it) {
-      let int_parsed =
-        it
+      |> p.map(fn(ds) {
+        [sign, d, ..ds]
         |> string.join("")
-        |> int.parse()
-
-      case int_parsed {
-        Ok(it) -> p.of(VInteger(it))
-        Error(_) -> p.fail()
-      }
+      })
     })
+  })
+}
+
+// TODO extend float such that it supports inf and NAN, gleam test for floats
+fn float() -> TomlParser(Node) {
+  integer_base_10_str()
+  |> p.chain_first(fn(_) { p.look_ahead(c.one_of(".eE")) })
+  |> p.chain(fn(n) {
+    c.char(".")
+    |> p.chain(fn(_) { integer_base_10_str() })
+    |> p.alt(fn() { p.of("0") })
+    |> p.chain(fn(d) {
+      c.one_of("eE")
+      |> p.chain(fn(_) { integer_base_10_str() })
+      |> p.alt(fn() { p.of("0") })
+      |> p.chain(fn(e) {
+        case
+          [n, ".", d, "e", e]
+          |> string.join("")
+          |> float.parse()
+        {
+          Ok(f) -> p.of(VFloat(f))
+          Error(_) -> p.fail()
+        }
+      })
+    })
+  })
+}
+
+fn integer_base_10() -> TomlParser(Node) {
+  integer_base_10_str()
+  |> p.chain(fn(it) {
+    let int_parsed =
+      it
+      |> int.parse()
+
+    case int_parsed {
+      Ok(it) -> p.of(VInteger(it))
+      Error(_) -> p.fail()
+    }
   })
 }
 
@@ -639,6 +651,7 @@ fn is_hex(c: c.Char) -> Bool {
 const max_unicode = 1_114_111
 
 if erlang {
+  // TODO remove from this file
   external fn do_to_unicode_char(Int) -> c.Char =
     "parser_gleam_ffi" "to_unicode_str"
 }
