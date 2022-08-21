@@ -49,16 +49,38 @@ pub type RFC3339Parser(a) =
 // RFC3339 - constructors
 // -------------------------------------------------------------------------------------
 
+fn parse_hour(hour) {
+  hour
+  |> int.parse()
+  |> result.then(fn(h) {
+    case h >= 0 && h < 24 {
+      True -> Ok(h)
+      False -> Error(Nil)
+    }
+  })
+}
+
+fn parse_m_s(hour) {
+  hour
+  |> int.parse()
+  |> result.then(fn(h) {
+    case h >= 0 && h < 60 {
+      True -> Ok(h)
+      False -> Error(Nil)
+    }
+  })
+}
+
 fn build_positive_timezone(
   hour: String,
   minute: String,
 ) -> RFC3339Parser(Timezone) {
   let time_result =
     hour
-    |> int.parse()
+    |> parse_hour()
     |> result.then(fn(h) {
       minute
-      |> int.parse()
+      |> parse_m_s()
       |> result.map(fn(m) { #(h, m) })
     })
 
@@ -74,10 +96,10 @@ fn build_negative_timezone(
 ) -> RFC3339Parser(Timezone) {
   let time_result =
     hour
-    |> int.parse()
+    |> parse_hour()
     |> result.then(fn(h) {
       minute
-      |> int.parse()
+      |> parse_m_s()
       |> result.map(fn(m) { #(h, m) })
     })
 
@@ -85,6 +107,28 @@ fn build_negative_timezone(
     Ok(#(h, m)) -> p.of(TimezoneNegative(h, m))
     Error(_) -> p.expected(p.fail(), "failed to build timezone")
   }
+}
+
+fn parse_day(day) {
+  day
+  |> int.parse()
+  |> result.then(fn(d) {
+    case d >= 1 && d < 32 {
+      True -> Ok(d)
+      False -> Error(Nil)
+    }
+  })
+}
+
+fn parse_month(month) {
+  month
+  |> int.parse()
+  |> result.then(fn(m) {
+    case m >= 1 && m < 13 {
+      True -> Ok(m)
+      False -> Error(Nil)
+    }
+  })
 }
 
 fn build_local_date(
@@ -97,10 +141,10 @@ fn build_local_date(
     |> int.parse()
     |> result.then(fn(y) {
       month
-      |> int.parse()
+      |> parse_month()
       |> result.then(fn(m) {
         day
-        |> int.parse()
+        |> parse_day()
         |> result.map(fn(d) { LocalDate(y, m, d) })
       })
     })
@@ -119,13 +163,13 @@ fn build_local_time(
 ) -> RFC3339Parser(LocalTime) {
   let time_result =
     hour
-    |> int.parse()
+    |> parse_hour()
     |> result.then(fn(h) {
       minute
-      |> int.parse()
+      |> parse_m_s()
       |> result.then(fn(m) {
         second
-        |> int.parse()
+        |> parse_m_s()
         |> result.then(fn(s) {
           case miliseconds {
             None -> Ok(LocalTime(h, m, s, None))
@@ -246,7 +290,7 @@ fn local_time() -> RFC3339Parser(LocalTime) {
 fn local_datetime() -> RFC3339Parser(LocalDatetime) {
   local_date()
   |> p.chain(fn(d) {
-    p.optional(c.one_of("Tt _"))
+    c.one_of("Tt _")
     |> p.chain(fn(_) {
       local_time()
       |> p.map(fn(t) { LocalDatetime(d, t) })

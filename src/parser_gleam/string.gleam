@@ -7,26 +7,9 @@ import gleam/string
 import gleam/int
 import gleam/float
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{None}
 import fp_gl/non_empty_list as nea
 import fp_gl/fstring
-
-fn char_at(index: Int, s: String) -> Option(Char) {
-  let r =
-    s
-    |> string.to_graphemes()
-    |> list.at(index)
-
-  case r {
-    Ok(v) -> Some(v)
-    Error(_) -> None
-  }
-}
-
-fn slice(index: Int, s: String) -> String {
-  s
-  |> string.slice(index, string.length(s) - index)
-}
 
 // -------------------------------------------------------------------------------------
 // constructors
@@ -38,12 +21,11 @@ pub fn string(s: String) -> Parser(Char, String) {
     p.chain_rec(
       s,
       fn(acc) {
-        // TODO: does string first exist?
-        case char_at(0, acc) {
-          None -> p.of(Ok(s))
-          Some(ch) ->
+        case string.pop_grapheme(acc) {
+          Error(_) -> p.of(Ok(s))
+          Ok(#(ch, tail)) ->
             c.char(ch)
-            |> p.chain(fn(_) { p.of(Error(slice(1, acc))) })
+            |> p.chain(fn(_) { p.of(Error(tail)) })
         }
       },
     ),

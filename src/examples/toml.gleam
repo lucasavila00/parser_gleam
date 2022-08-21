@@ -6,7 +6,6 @@ import gleam/string
 import gleam/list
 import gleam/int
 import gleam/float
-import gleam/io
 import gleam/set
 import gleam/result
 import fp_gl/non_empty_list as nel
@@ -16,6 +15,8 @@ import fp_gl/non_empty_list as nel
 // -------------------------------------------------------------------------------------
 // toml - model
 // -------------------------------------------------------------------------------------
+
+// TODO: Explicitness
 pub type Explicitness {
   Explicit
   Implicit
@@ -75,6 +76,11 @@ fn is_whitespace() {
 fn end_of_line() {
   s.one_of(["\n", "\r\n"])
   |> p.map(fn(_) { Nil })
+}
+
+fn is_non_zero_digit(c: c.Char) {
+  "123456789"
+  |> string.contains(c)
 }
 
 fn comment() {
@@ -503,6 +509,24 @@ fn integer_base_10_str() -> TomlParser(String) {
   })
 }
 
+fn integer_base_10_str_no_leading_zero() -> TomlParser(String) {
+  signed()
+  |> p.chain(fn(sign) {
+    p.sat(is_non_zero_digit)
+    |> p.chain(fn(d) {
+      p.many(
+        p.optional(c.char("_"))
+        |> p.chain(fn(_) { c.digit() }),
+      )
+      |> p.map(fn(ds) {
+        [sign, d, ..ds]
+        |> string.join("")
+      })
+    })
+    |> p.alt(fn() { c.char("0") })
+  })
+}
+
 fn signed_positiveness() {
   s.string("-")
   |> p.map(fn(_) { VNegative })
@@ -518,7 +542,7 @@ fn signed_positiveness() {
 
 // TODO extend float such that it supports inf and NAN, gleam test for floats
 fn float() -> TomlParser(Node) {
-  integer_base_10_str()
+  integer_base_10_str_no_leading_zero()
   |> p.chain_first(fn(_) { p.look_ahead(c.one_of(".eE")) })
   |> p.chain(fn(n) {
     c.char(".")
@@ -557,7 +581,7 @@ fn float() -> TomlParser(Node) {
 }
 
 fn integer_base_10() -> TomlParser(Node) {
-  integer_base_10_str()
+  integer_base_10_str_no_leading_zero()
   |> p.chain(fn(it) {
     let int_parsed =
       it
@@ -720,6 +744,7 @@ fn to_unicode_char(lst: List(Int)) -> c.Char {
   assert Ok(value) =
     lst
     |> int.undigits(16)
+
   assert True = value <= max_unicode
 
   do_to_unicode_char(value)
