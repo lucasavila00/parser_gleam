@@ -1,5 +1,5 @@
 name = "parser_gleam"
-version = "0.0.4"
+version = "0.0.5"
 
 licences = ["AGPL-3.0-or-later"]
 description = "A porting of parser-ts, purescript-eulalie to Gleam"

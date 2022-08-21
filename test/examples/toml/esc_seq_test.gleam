@@ -1,5 +1,5 @@
 import gleeunit/should
-import parsers/toml
+import parsers/toml/parser as toml
 import parser_gleam/string as s
 import gleam/io
 

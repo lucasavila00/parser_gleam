@@ -1,5 +1,5 @@
 import gleeunit/should
-import parsers/toml.{
+import parsers/toml/model.{
   FloatNumeric, Inf, NaN, VArray, VBoolean, VDatetime, VFloat, VInteger, VNegative,
   VNone, VPositive, VString, VTArray, VTable,
 }
@@ -9,6 +9,7 @@ import parsers/rfc_3339.{
 import parser_gleam/string as s
 import gleam/io
 import gleam/option.{None}
+import parsers/toml/parser as toml
 
 fn parse_toml(str: String) {
   assert Ok(r) =

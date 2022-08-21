@@ -3,7 +3,7 @@
 -export([main/1]).
 
 toml_to_json_(A) ->
-    parser_gleam:toml_to_json(A).
+    parsers@toml@printer:toml_to_json(A).
 
 read_stdin(A) ->
     case io:get_line("") of
