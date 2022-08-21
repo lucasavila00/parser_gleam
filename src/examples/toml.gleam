@@ -99,6 +99,10 @@ fn assignment_list_str(ks: List(String), v: Node) -> #(String, Node) {
   }
 }
 
+fn whitespace_surounded() {
+  p.between(p.many(is_whitespace()), p.many(is_whitespace()))
+}
+
 fn assignment() -> TomlParser(#(String, Node)) {
   p.sep_by1(
     c.char("."),
@@ -108,7 +112,8 @@ fn assignment() -> TomlParser(#(String, Node)) {
       |> join_nel()
     })
     |> p.alt(fn() { basic_str() })
-    |> p.alt(fn() { literal_str() }),
+    |> p.alt(fn() { literal_str() })
+    |> whitespace_surounded(),
   )
   |> p.map(nel.to_list)
   |> p.chain(fn(ks) {
@@ -122,6 +127,28 @@ fn assignment() -> TomlParser(#(String, Node)) {
       |> p.map(fn(v) { assignment_list_str(ks, v) })
     })
   })
+}
+
+fn deep_merge_inline_table(it: Table) -> Table {
+  it
+  |> list.fold(
+    [],
+    fn(p, c) {
+      let #(k, v) = c
+      case list.key_find(p, k) {
+        Ok(old_v) -> {
+          assert VTable(old_rows) = old_v
+          assert VTable(new_rows) = v
+          let new_value =
+            VTable(deep_merge_inline_table(list.append(old_rows, new_rows)))
+          p
+          |> list.key_set(k, new_value)
+        }
+        Error(_) -> [c, ..p]
+      }
+    },
+  )
+  |> list.reverse()
 }
 
 fn inline_table() -> TomlParser(Node) {
@@ -145,6 +172,7 @@ fn inline_table() -> TomlParser(Node) {
   |> p.chain(fn(_) { separated_values })
   |> p.chain_first(fn(_) { skip_spaces })
   |> p.between(c.char("{"), c.char("}"))
+  |> p.map(deep_merge_inline_table)
   |> p.map(VTable)
 }
 

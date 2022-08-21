@@ -484,11 +484,36 @@ b = {   \"a\".\"b\"  =  1   }
 pub fn inline_table5_test() {
   let str =
     "
-c = {   a   .   b  =  1   }
+c = {   a . b  =  42   }
+"
+
+  parse_toml(str)
+  |> should.equal([#("c", VTable([#("a", VTable([#("b", VInteger(42))]))]))])
+}
+
+pub fn inline_table6_test() {
+  let str =
+    "
+many.dots = {a.b.c = 1, a.b.d = 2}
 "
 
   parse_toml(str)
   |> should.equal([
-    #("inline", VTable([#("a", VTable([#("b", VInteger(42))]))])),
+    #(
+      "many",
+      VTable([
+        #(
+          "dots",
+          VTable([
+            #(
+              "a",
+              VTable([
+                #("b", VTable([#("c", VInteger(1)), #("d", VInteger(2))])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
   ])
 }
