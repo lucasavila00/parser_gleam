@@ -6,7 +6,10 @@ import gleam/string
 import gleam/list
 import gleam/int
 import gleam/set
+import gleam/io
+import gleam/result
 import fp_gl/non_empty_list as nel
+import fp_gl/models.{Monoid}
 
 // -------------------------------------------------------------------------------------
 // toml - model
@@ -304,7 +307,15 @@ fn multi_basic_str() -> TomlParser(String) {
   |> p.chain(fn(_) {
     esc_white_space
     |> p.chain(fn(_) {
-      p.many_till(str_char, d_quote_3)
+      p.many_till(
+        str_char,
+        d_quote_3
+        |> p.chain_first(fn(_) { p.many(blank_not_eol()) })
+        |> p.chain(fn(_) {
+          end_of_line()
+          |> p.alt(fn() { p.eof() })
+        }),
+      )
       |> p.map(fn(it) {
         it
         |> string.join("")
@@ -339,7 +350,10 @@ fn multi_literal_str() -> TomlParser(String) {
       p.item(),
       s_quote_3
       |> p.chain_first(fn(_) { p.many(blank_not_eol()) })
-      |> p.chain(fn(_) { end_of_line() }),
+      |> p.chain(fn(_) {
+        end_of_line()
+        |> p.alt(fn() { p.eof() })
+      }),
     )
     |> p.map(fn(st) {
       st
@@ -545,6 +559,81 @@ fn integer() -> TomlParser(Node) {
   |> p.alt(fn() { integer_base_10() })
 }
 
+fn is_hex(c: c.Char) -> Bool {
+  parse_int_16(c)
+  |> result.is_ok()
+}
+
+const max_unicode = 1_114_111
+
+if erlang {
+  external fn do_to_unicode_char(List(Int)) -> c.Char =
+    "parser_gleam" "to_unicode_str"
+}
+
+fn to_unicode_char(lst: List(Int)) -> c.Char {
+  assert Ok(value) =
+    lst
+    |> int.undigits(16)
+  assert True = value <= max_unicode
+
+  do_to_unicode_char(lst)
+}
+
+fn unixcode_hex_8() -> TomlParser(c.Char) {
+  p.sat(is_hex)
+  |> p.chain(fn(d1) {
+    p.sat(is_hex)
+    |> p.chain(fn(d2) {
+      p.sat(is_hex)
+      |> p.chain(fn(d3) {
+        p.sat(is_hex)
+        |> p.chain(fn(d4) {
+          p.sat(is_hex)
+          |> p.chain(fn(d5) {
+            p.sat(is_hex)
+            |> p.chain(fn(d6) {
+              p.sat(is_hex)
+              |> p.chain(fn(d7) {
+                p.sat(is_hex)
+                |> p.chain(fn(d8) {
+                  let value =
+                    [d1, d2, d3, d4, d5, d6, d7, d8]
+                    |> list.map(parse_int_16)
+                    |> flatten_result_list()
+
+                  p.of(to_unicode_char(value))
+                })
+              })
+            })
+          })
+        })
+      })
+    })
+  })
+}
+
+fn unixcode_hex_4() -> TomlParser(c.Char) {
+  p.sat(is_hex)
+  |> p.chain(fn(d1) {
+    p.sat(is_hex)
+    |> p.chain(fn(d2) {
+      p.sat(is_hex)
+      |> p.chain(fn(d3) {
+        p.sat(is_hex)
+        |> p.chain(fn(d4) {
+          let value =
+            [d1, d2, d3, d4]
+            |> list.map(parse_int_16)
+            |> flatten_result_list()
+
+          p.of(to_unicode_char(value))
+        })
+      })
+    })
+  })
+}
+
 pub fn esc_seq() -> TomlParser(c.Char) {
   c.char("\\")
   |> p.chain(fn(_) {
@@ -571,8 +660,15 @@ pub fn esc_seq() -> TomlParser(c.Char) {
       c.char("r")
       |> p.map(fn(_) { "\r" })
     })
+    |> p.alt(fn() {
+      c.char("u")
+      |> p.chain(fn(_) { unixcode_hex_4() })
+    })
+    |> p.alt(fn() {
+      c.char("U")
+      |> p.chain(fn(_) { unixcode_hex_8() })
+    })
   })
-  //   TODO unicode
 }
 
 fn table_to_set(it: Table) {

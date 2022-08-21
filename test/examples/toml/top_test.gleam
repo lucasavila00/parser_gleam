@@ -412,24 +412,17 @@ one = \"\"\"\"one quote\"\"\"\"
 "
 
   parse_toml(str)
-  |> should.equal([#("lit_one", VString("'one quote'"))])
+  |> should.equal([#("one", VString("\"one quote\""))])
 }
-// # Make sure that quotes inside multiline strings are allowed, including right
-// # after the opening '''/\"\"\" and before the closing '''/\"\"\"
 
-// lit_one = ''''one quote''''
-// lit_two = '''''two quotes'''''
-// lit_one_space = ''' 'one quote' '''
-// lit_two_space = ''' ''two quotes'' '''
+pub fn escapes_test() {
+  let str =
+    "
 
-// one = \"\"\"\"one quote\"\"\"\"
-// two = \"\"\"\"\"two quotes\"\"\"\"\"
-// one_space = \"\"\" \"one quote\" \"\"\"
-// two_space = \"\"\" \"\"two quotes\"\" \"\"\"
+delete = \"a \\u007F\"
 
-// mismatch1 = \"\"\"aaa'''bbb\"\"\"
-// mismatch2 = '''aaa\"\"\"bbb'''
+"
 
-// # Three opening \"\"\", then one escaped \", then two \"\" (allowed), and then three
-// # closing \"\"\"
-// escaped = \"\"\"lol\\\"\"\"\"\"\"
+  parse_toml(str)
+  |> should.equal([#("delete", VString("a "))])
+}
