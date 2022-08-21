@@ -3,8 +3,8 @@
 -export([main/1]).
 
 to_json_(A) ->
-    {ok, It} = parsers@toml@parser:parse(A),
-    parsers@toml@printer:to_json(It).
+    It = parsers@toml@printer:parse_json(A),
+    parsers@toml@printer:print(It).
 
 read_stdin(A) ->
     case io:get_line("") of

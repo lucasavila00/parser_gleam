@@ -409,6 +409,22 @@ multiline_empty_four = \"\"\"\\
   |> should.equal([#("multiline_empty_four", VString(""))])
 }
 
+pub fn table_test() {
+  let str =
+    "
+# [x] you
+# [x.y] don't
+# [x.y.z] need these
+[x.y.z.w] # for this to work
+[x] # defining a super-table afterwards is ok
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("x", VTable([#("y", VTable([#("z", VTable([#("w", VTable([]))]))]))])),
+  ])
+}
+
 pub fn comment_tricky_test() {
   let str =
     "

@@ -31,5 +31,8 @@ pub type Node {
   VArray(List(Node))
 }
 
+pub type TableRow =
+  #(String, Node)
+
 pub type Table =
-  List(#(String, Node))
+  List(TableRow)

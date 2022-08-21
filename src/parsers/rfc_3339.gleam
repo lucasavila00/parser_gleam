@@ -412,16 +412,26 @@ pub fn parse(it: String) -> Result(RFC3339, String) {
 // printers
 // -------------------------------------------------------------------------------------
 
+fn pad_2(it: String) {
+  case string.length(it) {
+    0 -> "00"
+    1 -> string.concat(["0", it])
+    _ -> it
+  }
+}
+
 fn print_local_date(it: LocalDate) -> String {
   string.concat([
     it.year
     |> int.to_string(),
     "-",
     it.month
-    |> int.to_string(),
+    |> int.to_string()
+    |> pad_2(),
     "-",
     it.day
-    |> int.to_string(),
+    |> int.to_string()
+    |> pad_2(),
   ])
 }
 
@@ -440,13 +450,16 @@ fn print_precision(it: Option(Int)) -> String {
 fn print_local_time(it: LocalTime) -> String {
   string.concat([
     it.hour
-    |> int.to_string(),
+    |> int.to_string()
+    |> pad_2(),
     ":",
     it.minutes
-    |> int.to_string(),
+    |> int.to_string()
+    |> pad_2(),
     ":",
     it.seconds
-    |> int.to_string(),
+    |> int.to_string()
+    |> pad_2(),
     print_precision(it.precision),
   ])
 }
@@ -458,19 +471,23 @@ fn print_timezone(it: Timezone) -> String {
       string.concat([
         "+",
         h
-        |> int.to_string(),
+        |> int.to_string()
+        |> pad_2(),
         ":",
         m
-        |> int.to_string(),
+        |> int.to_string()
+        |> pad_2(),
       ])
     TimezoneNegative(h, m) ->
       string.concat([
         "-",
         h
-        |> int.to_string(),
+        |> int.to_string()
+        |> pad_2(),
         ":",
         m
-        |> int.to_string(),
+        |> int.to_string()
+        |> pad_2(),
       ])
   }
 }

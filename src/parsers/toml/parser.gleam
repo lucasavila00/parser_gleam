@@ -1,8 +1,8 @@
 //// **Well tested**
 ////
-//// A parser for Tom's Obvious Minimal Language (toml).
+//// A parser for Tom's Obvious Minimal Language (toml). That's the language gleam.toml is written on, for instance.
 ////
-//// That's the language gleam.toml is written on.
+//// The implementation is heavily inspired by [htoml](https://github.com/cies/htoml). All valid tests of [toml-test](https://github.com/BurntSushi/toml-test) pass.
 ////
 //// There is a function to parse:
 ////
@@ -82,27 +82,10 @@ import fp_gl/non_empty_list as nel
 
 // TODO: remove asserts
 // TODO: run toml tests in CI
-
-// -------------------------------------------------------------------------------------
-// toml - model
-// -------------------------------------------------------------------------------------
-
-// TODO: Explicitness
-type Explicitness {
-  Explicit
-  Implicit
-}
-
-// -------------------------------------------------------------------------------------
-// parser - model
-// -------------------------------------------------------------------------------------
+// TODO: add parsers to readme, like nimble
 
 type TomlParser(a) =
   p.Parser(String, a)
-
-// -------------------------------------------------------------------------------------
-// parsers
-// -------------------------------------------------------------------------------------
 
 /// Results in 'True' for whitespace chars, tab or space, according to spec.
 fn is_whitespace() {
@@ -577,7 +560,6 @@ fn signed_positiveness() {
   })
 }
 
-// TODO extend float such that it supports inf and NAN, gleam test for floats
 fn float() -> TomlParser(Node) {
   integer_base_10_str_no_leading_zero()
   |> p.chain_first(fn(_) { p.look_ahead(c.one_of(".eE")) })
@@ -773,6 +755,7 @@ const max_unicode = 1_114_111
 
 if erlang {
   // TODO remove from this file
+  // TODO JS version too (make sure it compiles)
   external fn do_to_unicode_char(Int) -> c.Char =
     "parser_gleam_ffi" "to_unicode_str"
 }
@@ -902,7 +885,6 @@ fn merge(existing: Table, new: Table) -> Either(List(String), Table) {
 }
 
 fn list_init(it: List(Table)) -> List(Table) {
-  // TODO optimize
   assert Ok(init) =
     it
     |> list.reverse()
