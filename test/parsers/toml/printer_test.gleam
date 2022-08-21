@@ -137,7 +137,7 @@ pub fn array_empty_test() {
 
   to_toml(str)
   |> should.equal(
-    "songs = [false, true]
+    "songs = [[]]
 ",
   )
 }

@@ -10,6 +10,7 @@ import gleam/list
 import gleam/int
 import gleam/result
 import gleam/float
+import gleam/io
 import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string_builder.{StringBuilder} as sb
@@ -170,6 +171,27 @@ fn table_row_typed_decoder(it: Dynamic) -> Result(Node, DecodeErrors) {
   }
 }
 
+fn table_row_decoder_inside_array(it: Dynamic) -> Result(Node, DecodeErrors) {
+  table_row_typed_decoder(it)
+  |> result.lazy_or(fn() {
+    it
+    |> dynamic.list(table_row_decoder_inside_array)
+    |> result.map(VArray)
+  })
+  |> result.lazy_or(fn() {
+    json_toml_doc_decoder_inside_array(it)
+    |> result.map(VTable)
+  })
+}
+
+fn json_toml_doc_decoder_inside_array(
+  it: Dynamic,
+) -> Result(Table, DecodeErrors) {
+  it
+  |> dynamic.map(dynamic.string, table_row_decoder_inside_array)
+  |> result.map(map.to_list)
+}
+
 fn table_row_decoder(it: Dynamic) -> Result(Node, DecodeErrors) {
   table_row_typed_decoder(it)
   |> result.lazy_or(fn() {
@@ -178,13 +200,13 @@ fn table_row_decoder(it: Dynamic) -> Result(Node, DecodeErrors) {
     |> result.map(VTArray)
   })
   |> result.lazy_or(fn() {
-    json_toml_doc_decoder(it)
-    |> result.map(VTable)
+    it
+    |> dynamic.list(table_row_decoder_inside_array)
+    |> result.map(VArray)
   })
   |> result.lazy_or(fn() {
-    it
-    |> dynamic.list(table_row_decoder)
-    |> result.map(VArray)
+    json_toml_doc_decoder(it)
+    |> result.map(VTable)
   })
 }
 
@@ -211,10 +233,18 @@ fn escape_string(it: String) -> StringBuilder {
   |> sb.from_string()
 }
 
-fn add_assignment(to: StringBuilder, k: Option(String)) -> StringBuilder {
+fn add_assignment(
+  to: StringBuilder,
+  k: Option(String),
+  break_after_assign: Bool,
+) -> StringBuilder {
+  let break = case break_after_assign {
+    True -> sb.from_string("\n")
+    False -> sb.from_string("")
+  }
   case k {
     Some(k) ->
-      [sb.from_string(k), sb.from_string(" = "), to, sb.from_string("\n")]
+      [sb.from_string(k), sb.from_string(" = "), to, break]
       |> sb.concat()
 
     None -> to
@@ -241,6 +271,23 @@ fn print_table_node(
     sb.from_string("]"),
     sb.from_string("\n"),
     print_table_contents(table, parents),
+  ]
+  |> sb.concat()
+}
+
+fn print_inline_table_node(table: Table) -> StringBuilder {
+  [
+    sb.from_string("{ "),
+    sb.from_string(
+      table
+      |> list.map(fn(row) {
+        let #(k, node) = row
+        print_node(Some(k), node, [], False)
+        |> sb.to_string()
+      })
+      |> string.join(", "),
+    ),
+    sb.from_string("} "),
   ]
   |> sb.concat()
 }
@@ -277,12 +324,13 @@ fn print_node(
   k: Option(String),
   it: Node,
   table_parents: List(String),
+  break_after_assign: Bool,
 ) -> StringBuilder {
   case it {
     model.VTable(table) ->
       case k {
         Some(k) -> print_table_node(k, table, table_parents)
-        None -> todo
+        None -> print_inline_table_node(table)
       }
 
     model.VTArray(vta) ->
@@ -293,12 +341,12 @@ fn print_node(
 
     model.VString(s) ->
       escape_string(s)
-      |> add_assignment(k)
+      |> add_assignment(k, break_after_assign)
     model.VInteger(i) ->
       i
       |> int.to_string()
       |> sb.from_string()
-      |> add_assignment(k)
+      |> add_assignment(k, break_after_assign)
     model.VFloat(f) ->
       case f {
         FloatNumeric(f) ->
@@ -312,24 +360,24 @@ fn print_node(
           [sb.from_string(positiveness_to_string(s)), sb.from_string("inf")]
           |> sb.concat()
       }
-      |> add_assignment(k)
+      |> add_assignment(k, break_after_assign)
     model.VBoolean(b) ->
       case b {
         True -> sb.from_string("true")
         False -> sb.from_string("false")
       }
-      |> add_assignment(k)
+      |> add_assignment(k, break_after_assign)
     model.VDatetime(d) ->
       rfc_3339.print(d)
       |> sb.from_string()
-      |> add_assignment(k)
+      |> add_assignment(k, break_after_assign)
     model.VArray(ns) ->
       [
         sb.from_string("["),
         sb.from_string(
           ns
           |> list.map(fn(node) {
-            print_node(None, node, [])
+            print_node(None, node, [], False)
             |> sb.to_string()
           })
           |> string.join(", "),
@@ -337,7 +385,7 @@ fn print_node(
         sb.from_string("]"),
       ]
       |> sb.concat()
-      |> add_assignment(k)
+      |> add_assignment(k, break_after_assign)
   }
 }
 
@@ -345,7 +393,7 @@ fn print_table_contents(it: Table, table_parents: List(String)) -> StringBuilder
   it
   |> list.map(fn(row) {
     let #(k, v) = row
-    [print_node(Some(k), v, table_parents)]
+    [print_node(Some(k), v, table_parents, True)]
     |> sb.concat()
   })
   |> sb.concat()
