@@ -6,10 +6,8 @@ import gleam/string
 import gleam/list
 import gleam/int
 import gleam/set
-import gleam/io
 import gleam/result
 import fp_gl/non_empty_list as nel
-import fp_gl/models.{Monoid}
 
 // -------------------------------------------------------------------------------------
 // toml - model
@@ -110,8 +108,27 @@ fn assignment() -> TomlParser(#(String, Node)) {
 }
 
 fn inline_table() -> TomlParser(Node) {
-  // TODO fix it
-  p.fail()
+  let skip_spaces = p.many(is_whitespace())
+  let comma =
+    skip_spaces
+    |> p.chain(fn(_) {
+      c.char(",")
+      |> p.chain(fn(_) { skip_spaces })
+    })
+
+  let separated_values =
+    p.sep_by(
+      comma,
+      skip_spaces
+      |> p.chain(fn(_) { assignment() })
+      |> p.chain_first(fn(_) { skip_spaces }),
+    )
+
+  skip_spaces
+  |> p.chain(fn(_) { separated_values })
+  |> p.chain_first(fn(_) { skip_spaces })
+  |> p.between(c.char("{"), c.char("}"))
+  |> p.map(VTable)
 }
 
 fn table() -> TomlParser(Table) {
@@ -207,6 +224,7 @@ fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {
   skip_blanks()
   |> p.chain(fn(_) { separated_values })
   |> p.chain_first(fn(_) { p.optional(comma) })
+  |> p.chain_first(fn(_) { p.many(is_whitespace()) })
   |> p.between(c.char("["), c.char("]"))
   |> p.map(VArray)
 }

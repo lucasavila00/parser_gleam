@@ -426,3 +426,27 @@ delete = \"a \\u007F\"
   parse_toml(str)
   |> should.equal([#("delete", VString("a "))])
 }
+
+pub fn inline_table_test() {
+  let str =
+    "
+a = {a = true, b = false}
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("a", VTable([#("a", VBoolean(True)), #("b", VBoolean(False))])),
+  ])
+}
+
+pub fn inline_table2_test() {
+  let str =
+    "
+nested_empty = {\"empty\"={}}
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("a", VTable([#("a", VBoolean(True)), #("b", VBoolean(False))])),
+  ])
+}
