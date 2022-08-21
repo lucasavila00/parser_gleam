@@ -10,5 +10,5 @@ toml-test scripts/toml.erl -run valid/float/* && \
 toml-test scripts/toml.erl -run valid/comment/* && \
 toml-test scripts/toml.erl -run valid/array/* && \
 toml-test scripts/toml.erl -run valid/key/* && \
-# toml-test scripts/toml.erl -run valid/* && \
+toml-test scripts/toml.erl -run valid/* && \
 echo "ok"

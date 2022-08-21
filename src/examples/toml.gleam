@@ -6,6 +6,7 @@ import gleam/string
 import gleam/list
 import gleam/int
 import gleam/float
+import gleam/io
 import gleam/set
 import gleam/result
 import fp_gl/non_empty_list as nel
@@ -152,7 +153,7 @@ fn assignment() -> TomlParser(#(String, Node)) {
   })
 }
 
-fn deep_merge_inline_table(it: Table) -> Table {
+fn deep_merge_table(it: Table) -> Table {
   it
   |> list.fold(
     [],
@@ -163,7 +164,7 @@ fn deep_merge_inline_table(it: Table) -> Table {
           assert VTable(old_rows) = old_v
           assert VTable(new_rows) = v
           let new_value =
-            VTable(deep_merge_inline_table(list.append(old_rows, new_rows)))
+            VTable(deep_merge_table(list.append(old_rows, new_rows)))
           p
           |> list.key_set(k, new_value)
         }
@@ -204,7 +205,7 @@ fn inline_table() -> TomlParser(Node) {
   |> p.chain(fn(_) { separated_values })
   |> p.chain_first(fn(_) { skip_spaces })
   |> p.between(c.char("{"), inline_table_end())
-  |> p.map(deep_merge_inline_table)
+  |> p.map(deep_merge_table)
   |> p.map(VTable)
 }
 
@@ -217,6 +218,7 @@ fn table() -> TomlParser(Table) {
     skip_blanks()
     |> p.map(fn(_) { [] })
   })
+  |> p.map(deep_merge_table)
 }
 
 type Either(l, r) {

@@ -499,16 +499,6 @@ nested_empty = {\"empty\"={}}
   |> should.equal([#("nested_empty", VTable([#("empty", VTable([]))]))])
 }
 
-pub fn key1_test() {
-  let str =
-    "
-\"empty\"=1
-"
-
-  parse_toml(str)
-  |> should.equal([#("empty", VInteger(1))])
-}
-
 pub fn inline_table3_test() {
   let str =
     "
@@ -661,4 +651,30 @@ title = [\"Code: XXXX\"
 
   parse_toml(str)
   |> should.equal([#("title", VArray([VString("Code: XXXX")]))])
+}
+
+pub fn key1_test() {
+  let str =
+    "
+\"empty\"=1
+"
+
+  parse_toml(str)
+  |> should.equal([#("empty", VInteger(1))])
+}
+
+pub fn key2_test() {
+  let str =
+    "
+name.first = \"Arthur\"
+\"name\".'last' = \"Dent\"
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #(
+      "name",
+      VTable([#("first", VString("Arthur")), #("last", VString("Dent"))]),
+    ),
+  ])
 }
