@@ -11,6 +11,7 @@ import gleam/int
 import gleam/result
 import gleam/order
 import gleam/float
+import gleam/bit_string
 import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string_builder.{StringBuilder} as sb
@@ -220,6 +221,11 @@ fn json_toml_doc_decoder(it: Dynamic) -> Result(Table, DecodeErrors) {
 
 pub fn parse_json(it: String) -> Result(Table, json.DecodeError) {
   json.decode(it, json_toml_doc_decoder)
+}
+
+pub fn parse_json_2(it: String) {
+  bit_string.from_string(it)
+  //   json.decode(it, dynamic.dynamic)
 }
 
 // -------------------------------------------------------------------------------------
