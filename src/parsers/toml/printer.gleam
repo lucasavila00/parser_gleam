@@ -11,7 +11,6 @@ import gleam/int
 import gleam/result
 import gleam/order
 import gleam/float
-import gleam/io
 import gleam/map
 import gleam/option.{None, Option, Some}
 import gleam/string_builder.{StringBuilder} as sb
@@ -219,9 +218,8 @@ fn json_toml_doc_decoder(it: Dynamic) -> Result(Table, DecodeErrors) {
   |> result.map(map.to_list)
 }
 
-pub fn parse_json(it: String) -> Table {
-  assert Ok(it) = json.decode(it, json_toml_doc_decoder)
-  it
+pub fn parse_json(it: String) -> Result(Table, json.DecodeError) {
+  json.decode(it, json_toml_doc_decoder)
 }
 
 // -------------------------------------------------------------------------------------

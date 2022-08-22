@@ -755,10 +755,13 @@ fn is_hex(c: c.Char) -> Bool {
 const max_unicode = 1_114_111
 
 if erlang {
-  // TODO remove from this file
-  // TODO JS version too (make sure it compiles)
   external fn do_to_unicode_char(Int) -> c.Char =
-    "parser_gleam_ffi" "to_unicode_str"
+    "gleam_stdlib" "identity"
+}
+
+if javascript {
+  external fn do_to_unicode_char(Int) -> c.Char =
+    "../parser_gleam_ffi.mjs" "to_unicode_str"
 }
 
 fn to_unicode_char(lst: List(Int)) -> c.Char {

@@ -1,9 +1,9 @@
-#!/usr/bin/env escript
+#!/usr/bin/env escript 
 -module(toml).
 -export([main/1]).
 
 to_json_(A) ->
-    It = parsers@toml@printer:parse_json(A),
+    {ok, It} = parsers@toml@printer:parse_json(A),
     parsers@toml@printer:print(It).
 
 read_stdin(A) ->

@@ -12,3 +12,8 @@ fp_gl = "~> 0.0"
 [dev-dependencies]
 gleeunit = "~> 0.6"
 rad = "~> 0.1"
+
+
+[rad]
+workbook = "workbook"
+main = "main"

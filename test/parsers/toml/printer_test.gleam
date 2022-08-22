@@ -5,6 +5,10 @@ import parsers/toml/printer as toml
 fn to_toml(it: String) -> String {
   it
   |> toml.parse_json()
+  |> fn(r) {
+    assert Ok(r) = r
+    r
+  }
   |> toml.print()
   |> io.debug
 }
