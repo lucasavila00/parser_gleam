@@ -697,3 +697,18 @@ name.first = \"Arthur\"
     ),
   ])
 }
+
+pub fn invalid_test() {
+  let str =
+    "
+[fruit]
+apple.color = \"red\"
+
+[fruit.apple] # INVALID
+"
+
+  parse_toml(str)
+  |> should.equal([
+    #("fruit", VTable([#("apple", VTable([#("color", VString("red"))]))])),
+  ])
+}

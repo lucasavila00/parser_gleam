@@ -71,12 +71,12 @@ pub fn long_strings_recursion_limit_test() {
   // TODO: increase these numbers?
   let target =
     lorem
-    |> list.repeat(10)
+    |> list.repeat(100)
     |> string.join(" ")
 
   let source =
     lorem
-    |> list.repeat(100)
+    |> list.repeat(1000)
     |> string.join(" ")
 
   let cursor =
