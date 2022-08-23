@@ -911,9 +911,9 @@ fn list_init(it: List(Table)) -> List(Table) {
 fn insert_named_section(
   ex: Explicitness,
   top_table: Table,
-  named_sections: NamedSection,
+  named_section: NamedSection,
 ) -> StatefulTomlParser(Table) {
-  case named_sections {
+  case named_section {
     #([], _node) ->
       p.fail()
       |> p.expected("FATAL: Cannot call 'insert' without a name.")
@@ -923,10 +923,19 @@ fn insert_named_section(
         top_table
         |> list.key_find(name)
       {
-        Error(_) ->
-          top_table
-          |> list.key_set(name, node)
-          |> p.of()
+        Error(_) -> {
+          let result =
+            top_table
+            |> list.key_set(name, node)
+          case is_explicit(ex) {
+            True ->
+              update_ex_state([name], node)
+              |> p.map(fn(_) { result })
+            False ->
+              result
+              |> p.of()
+          }
+        }
         Ok(VTable(t)) ->
           case node {
             VTable(nt) ->
@@ -1011,10 +1020,9 @@ fn update_ex_state_or_error(
   node: Node,
 ) -> StatefulTomlParser(Nil) {
   p.get_state()
-  |> p.chain(fn(explictly_defiend_names) {
-    // 
+  |> p.chain(fn(explictly_defined_names) {
     case
-      explictly_defiend_names
+      explictly_defined_names
       |> set.contains(name)
     {
       True -> table_clash_error(name)

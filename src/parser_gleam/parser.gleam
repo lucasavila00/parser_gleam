@@ -5,7 +5,7 @@ import fp_gl/models.{Monoid, Semigroup}
 import fp_gl/function.{Lazy, identity}
 import fp_gl/chain_rec.{tail_rec}
 import parser_gleam/parse_result.{
-  ParseError, ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
+  ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
 }
 import gleam/option.{None, Option, Some}
 import gleam/result
@@ -53,16 +53,6 @@ pub fn modify_state(updater: fn(s) -> s) -> Parser(s, i, Nil) {
   }
 }
 
-pub fn put_state(p: Parser(s, i, a), state: s) -> Parser(s, i, Nil) {
-  fn(s, i) {
-    p(s, i)
-    |> result.map(fn(r) {
-      ParseSuccess(value: Nil, next: r.next, start: r.start, state: state)
-    })
-    |> result.map_error(fn(e) { ParseError(..e, state: state) })
-  }
-}
-
 /// A parser combinator which returns the provided parser unchanged, except
 /// that if it fails, the provided error message will be returned in the
 /// ParseError`.
@@ -105,8 +95,8 @@ pub fn seq(fa: Parser(s, i, a), f: fn(a) -> Parser(s, i, b)) {
   fn(s, i) {
     fa(s, i)
     |> result.then(fn(stream) {
-      f(stream.value)(s, stream.next)
-      |> result.then(fn(next) { success(next.value, next.next, i, s) })
+      f(stream.value)(stream.state, stream.next)
+      |> result.then(fn(next) { success(next.value, next.next, i, next.state) })
     })
   }
 }
@@ -187,7 +177,7 @@ pub fn map(ma: Parser(s, i, a), f: fn(a) -> b) -> Parser(s, i, b) {
   fn(s, i) {
     ma(s, i)
     |> result.map(fn(stream) {
-      ParseSuccess(f(stream.value), stream.next, stream.start, s)
+      ParseSuccess(f(stream.value), stream.next, stream.start, stream.state)
     })
   }
 }

@@ -26,6 +26,35 @@ fn success(a, b, c) {
   parse_result.success(a, b, c, Nil)
 }
 
+pub fn parser_state_test() {
+  let parser = p.eof()
+
+  parser
+  |> p.chain_first(fn(_) { p.modify_state(fn(a) { a + 1 }) })
+  |> s.run("", 0)
+  |> should.equal(parse_result.success(
+    Nil,
+    stream([], None),
+    stream([], None),
+    1,
+  ))
+
+  parser
+  |> p.map(fn(_) { 1 })
+  |> p.chain_first(fn(_) { p.modify_state(fn(a) { a + 100 }) })
+  |> p.chain(fn(v) {
+    p.get_state()
+    |> p.map(fn(state) { v + state })
+  })
+  |> s.run("", 0)
+  |> should.equal(parse_result.success(
+    101,
+    stream([], None),
+    stream([], None),
+    100,
+  ))
+}
+
 pub fn parser_eof_test() {
   let parser = p.eof()
 
