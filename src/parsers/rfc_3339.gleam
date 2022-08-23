@@ -72,8 +72,8 @@ pub type RFC3339 {
 // parser - model
 // -------------------------------------------------------------------------------------
 
-type RFC3339Parser(a) =
-  p.Parser(Nil, String, a)
+type RFC3339Parser(s, a) =
+  p.Parser(s, String, a)
 
 // -------------------------------------------------------------------------------------
 // RFC3339 - constructors
@@ -104,7 +104,7 @@ fn parse_m_s(hour) {
 fn build_positive_timezone(
   hour: String,
   minute: String,
-) -> RFC3339Parser(Timezone) {
+) -> RFC3339Parser(s, Timezone) {
   let time_result =
     hour
     |> parse_hour()
@@ -123,7 +123,7 @@ fn build_positive_timezone(
 fn build_negative_timezone(
   hour: String,
   minute: String,
-) -> RFC3339Parser(Timezone) {
+) -> RFC3339Parser(s, Timezone) {
   let time_result =
     hour
     |> parse_hour()
@@ -165,7 +165,7 @@ fn build_local_date(
   year: String,
   month: String,
   day: String,
-) -> RFC3339Parser(LocalDate) {
+) -> RFC3339Parser(s, LocalDate) {
   let date_result =
     year
     |> int.parse()
@@ -190,7 +190,7 @@ fn build_local_time(
   minute: String,
   second: String,
   miliseconds: Option(String),
-) -> RFC3339Parser(LocalTime) {
+) -> RFC3339Parser(s, LocalTime) {
   let time_result =
     hour
     |> parse_hour()
@@ -222,7 +222,7 @@ fn build_local_time(
 // parsers
 // -------------------------------------------------------------------------------------
 
-fn year() -> RFC3339Parser(String) {
+fn year() -> RFC3339Parser(s, String) {
   c.digit()
   |> p.chain(fn(y1) {
     c.digit()
@@ -236,7 +236,7 @@ fn year() -> RFC3339Parser(String) {
   })
 }
 
-fn month() -> RFC3339Parser(String) {
+fn month() -> RFC3339Parser(s, String) {
   c.digit()
   |> p.chain(fn(m1) {
     c.digit()
@@ -244,7 +244,7 @@ fn month() -> RFC3339Parser(String) {
   })
 }
 
-fn day() -> RFC3339Parser(String) {
+fn day() -> RFC3339Parser(s, String) {
   c.digit()
   |> p.chain(fn(d1) {
     c.digit()
@@ -253,7 +253,7 @@ fn day() -> RFC3339Parser(String) {
 }
 
 /// Hour, minute and second parser (2 digits, smaller than 60)
-fn two_digits_60() -> RFC3339Parser(String) {
+fn two_digits_60() -> RFC3339Parser(s, String) {
   c.digit()
   |> p.chain(fn(d1) {
     c.digit()
@@ -265,7 +265,7 @@ fn date_spacer() {
   c.char("-")
 }
 
-fn local_date() -> RFC3339Parser(LocalDate) {
+fn local_date() -> RFC3339Parser(s, LocalDate) {
   year()
   |> p.chain(fn(y) {
     date_spacer()
@@ -286,7 +286,7 @@ fn time_spacer() {
   c.char(":")
 }
 
-fn miliseconds() -> RFC3339Parser(Option(String)) {
+fn miliseconds() -> RFC3339Parser(s, Option(String)) {
   p.optional(
     c.char(".")
     |> p.chain(fn(_) { p.many(c.digit()) })
@@ -297,7 +297,7 @@ fn miliseconds() -> RFC3339Parser(Option(String)) {
   )
 }
 
-fn local_time() -> RFC3339Parser(LocalTime) {
+fn local_time() -> RFC3339Parser(s, LocalTime) {
   two_digits_60()
   |> p.chain(fn(h) {
     time_spacer()
@@ -317,7 +317,7 @@ fn local_time() -> RFC3339Parser(LocalTime) {
   })
 }
 
-fn local_datetime() -> RFC3339Parser(LocalDatetime) {
+fn local_datetime() -> RFC3339Parser(s, LocalDatetime) {
   local_date()
   |> p.chain(fn(d) {
     c.one_of("Tt _")
@@ -328,7 +328,7 @@ fn local_datetime() -> RFC3339Parser(LocalDatetime) {
   })
 }
 
-fn positive_timezone() -> RFC3339Parser(Timezone) {
+fn positive_timezone() -> RFC3339Parser(s, Timezone) {
   c.char("+")
   |> p.chain(fn(_) {
     two_digits_60()
@@ -342,7 +342,7 @@ fn positive_timezone() -> RFC3339Parser(Timezone) {
   })
 }
 
-fn negative_timezone() -> RFC3339Parser(Timezone) {
+fn negative_timezone() -> RFC3339Parser(s, Timezone) {
   c.char("-")
   |> p.chain(fn(_) {
     two_digits_60()
@@ -356,7 +356,7 @@ fn negative_timezone() -> RFC3339Parser(Timezone) {
   })
 }
 
-fn timezone() -> RFC3339Parser(Timezone) {
+fn timezone() -> RFC3339Parser(s, Timezone) {
   c.char("Z")
   |> p.map(fn(_) { TimezoneZulu })
   |> p.alt(fn() {
@@ -367,7 +367,7 @@ fn timezone() -> RFC3339Parser(Timezone) {
   |> p.alt(negative_timezone)
 }
 
-fn datetime() -> RFC3339Parser(Datetime) {
+fn datetime() -> RFC3339Parser(s, Datetime) {
   local_datetime()
   |> p.chain(fn(local) {
     timezone()
@@ -375,7 +375,7 @@ fn datetime() -> RFC3339Parser(Datetime) {
   })
 }
 
-pub fn parser() -> RFC3339Parser(RFC3339) {
+pub fn parser() -> RFC3339Parser(s, RFC3339) {
   datetime()
   |> p.map(RFC3339Datetime)
   |> p.alt(fn() {

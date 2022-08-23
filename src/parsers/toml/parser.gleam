@@ -84,8 +84,18 @@ import fp_gl/non_empty_list as nel
 // TODO: run toml tests in CI
 // TODO: add parsers to readme, like nimble
 
-type TomlParser(a) =
-  p.Parser(Nil, String, a)
+type TomlParser(s, a) =
+  p.Parser(s, String, a)
+
+pub type TomlParserState =
+  set.Set(List(String))
+
+pub fn initial_state() -> TomlParserState {
+  set.new()
+}
+
+type StatefulTomlParser(a) =
+  p.Parser(TomlParserState, String, a)
 
 /// Results in 'True' for whitespace chars, tab or space, according to spec.
 fn is_whitespace() {
@@ -131,7 +141,7 @@ fn blank() {
   |> p.alt(end_of_line)
 }
 
-fn skip_blanks() -> TomlParser(Nil) {
+fn skip_blanks() -> TomlParser(s, Nil) {
   p.many(blank())
   |> p.map(fn(_) { Nil })
 }
@@ -153,7 +163,7 @@ fn whitespace_surounded() {
   p.between(p.many(is_whitespace()), p.many(is_whitespace()))
 }
 
-fn assignment() -> TomlParser(#(String, Node)) {
+fn assignment() -> TomlParser(s, #(String, Node)) {
   p.sep_by1(
     c.char("."),
     p.many1(key_char())
@@ -210,7 +220,7 @@ fn inline_table_end() {
   |> p.map(fn(_) { "" })
 }
 
-fn inline_table() -> TomlParser(Node) {
+fn inline_table() -> TomlParser(s, Node) {
   let skip_spaces = p.many(is_whitespace())
   let comma =
     skip_spaces
@@ -235,7 +245,7 @@ fn inline_table() -> TomlParser(Node) {
   |> p.map(VTable)
 }
 
-fn table() -> TomlParser(Table) {
+fn table() -> TomlParser(s, Table) {
   p.many(
     assignment()
     |> p.chain_first(fn(_) { skip_blanks() }),
@@ -255,7 +265,7 @@ type Either(l, r) {
 type NamedSection =
   #(List(String), Node)
 
-fn named_section() -> TomlParser(NamedSection) {
+fn named_section() -> TomlParser(s, NamedSection) {
   let left =
     table_header()
     |> p.map(Left)
@@ -283,17 +293,17 @@ fn named_section() -> TomlParser(NamedSection) {
   })
 }
 
-fn table_header() -> TomlParser(List(String)) {
+fn table_header() -> TomlParser(s, List(String)) {
   header_value()
   |> p.between(c.char("["), c.char("]"))
 }
 
-fn table_array_header() -> TomlParser(List(String)) {
+fn table_array_header() -> TomlParser(s, List(String)) {
   header_value()
   |> p.between(s.string("[["), s.string("]]"))
 }
 
-fn header_value() -> TomlParser(List(String)) {
+fn header_value() -> TomlParser(s, List(String)) {
   p.sep_by1(
     c.char("."),
     p.many1(key_char())
@@ -308,7 +318,7 @@ fn header_value() -> TomlParser(List(String)) {
   |> p.map(nel.to_list)
 }
 
-fn value() -> TomlParser(Node) {
+fn value() -> TomlParser(s, Node) {
   array()
   |> p.alt(fn() { boolean() })
   |> p.alt(fn() { any_str() })
@@ -327,7 +337,7 @@ fn array_end() {
   |> p.map(fn(_) { "" })
 }
 
-fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {
+fn array_of(par: TomlParser(s, Node)) -> TomlParser(s, Node) {
   let comma =
     skip_blanks()
     |> p.chain(fn(_) { c.char(",") })
@@ -343,7 +353,7 @@ fn array_of(par: TomlParser(Node)) -> TomlParser(Node) {
   |> p.map(VArray)
 }
 
-fn array() -> TomlParser(Node) {
+fn array() -> TomlParser(s, Node) {
   boolean()
   |> p.alt(fn() { array() })
   |> p.alt(fn() { any_str() })
@@ -354,7 +364,7 @@ fn array() -> TomlParser(Node) {
   |> array_of()
 }
 
-fn boolean() -> TomlParser(Node) {
+fn boolean() -> TomlParser(s, Node) {
   s.string("true")
   |> p.map(fn(_) { VBoolean(True) })
   |> p.alt(fn() {
@@ -363,19 +373,19 @@ fn boolean() -> TomlParser(Node) {
   })
 }
 
-fn any_str() -> TomlParser(Node) {
+fn any_str() -> TomlParser(s, Node) {
   any_str_s()
   |> p.map(VString)
 }
 
-fn any_str_s() -> TomlParser(String) {
+fn any_str_s() -> TomlParser(s, String) {
   multi_basic_str()
   |> p.alt(basic_str)
   |> p.alt(multi_literal_str)
   |> p.alt(literal_str)
 }
 
-fn basic_str() -> TomlParser(String) {
+fn basic_str() -> TomlParser(s, String) {
   let str_char =
     esc_seq()
     |> p.alt(fn() { p.sat(fn(it) { it != "\"" && it != "\\" }) })
@@ -389,7 +399,7 @@ fn basic_str() -> TomlParser(String) {
   })
 }
 
-fn multi_basic_str() -> TomlParser(String) {
+fn multi_basic_str() -> TomlParser(s, String) {
   // Parse escaped white space, if any
   let esc_white_space =
     p.many(
@@ -451,7 +461,7 @@ fn multi_basic_str() -> TomlParser(String) {
   })
 }
 
-fn literal_str() -> TomlParser(String) {
+fn literal_str() -> TomlParser(s, String) {
   let s_quote = c.char("'")
   p.many(p.sat(fn(it) { it != "'" }))
   |> p.between(s_quote, s_quote)
@@ -461,7 +471,7 @@ fn literal_str() -> TomlParser(String) {
   })
 }
 
-fn multi_literal_str() -> TomlParser(String) {
+fn multi_literal_str() -> TomlParser(s, String) {
   // Parse tripple-double quotes
   let s_quote_3 = s.string("'''")
 
@@ -501,7 +511,7 @@ fn multi_literal_str() -> TomlParser(String) {
   })
 }
 
-fn datetime() -> TomlParser(Node) {
+fn datetime() -> TomlParser(s, Node) {
   rfc_3339.parser()
   |> p.map(VDatetime)
 }
@@ -512,7 +522,7 @@ fn signed() {
   |> p.alt(fn() { p.of("") })
 }
 
-fn integer_base_10_str() -> TomlParser(String) {
+fn integer_base_10_str() -> TomlParser(s, String) {
   signed()
   |> p.chain(fn(sign) {
     c.digit()
@@ -529,7 +539,7 @@ fn integer_base_10_str() -> TomlParser(String) {
   })
 }
 
-fn integer_base_10_str_no_leading_zero() -> TomlParser(String) {
+fn integer_base_10_str_no_leading_zero() -> TomlParser(s, String) {
   signed()
   |> p.chain(fn(sign) {
     p.sat(is_non_zero_digit)
@@ -560,7 +570,7 @@ fn signed_positiveness() {
   })
 }
 
-fn float() -> TomlParser(Node) {
+fn float() -> TomlParser(s, Node) {
   integer_base_10_str_no_leading_zero()
   |> p.chain_first(fn(_) { p.look_ahead(c.one_of(".eE")) })
   |> p.chain(fn(n) {
@@ -599,7 +609,7 @@ fn float() -> TomlParser(Node) {
   })
 }
 
-fn integer_base_10() -> TomlParser(Node) {
+fn integer_base_10() -> TomlParser(s, Node) {
   integer_base_10_str_no_leading_zero()
   |> p.chain(fn(it) {
     let int_parsed =
@@ -627,7 +637,7 @@ fn flatten_result_list(it: List(Result(a, b))) {
   )
 }
 
-fn integer_base_2() -> TomlParser(Node) {
+fn integer_base_2() -> TomlParser(s, Node) {
   let bin_digit = s.one_of(["0", "1"])
   s.string("0b")
   |> p.chain(fn(_) {
@@ -654,7 +664,7 @@ fn integer_base_2() -> TomlParser(Node) {
   })
 }
 
-fn integer_base_8() -> TomlParser(Node) {
+fn integer_base_8() -> TomlParser(s, Node) {
   let oct_digit = s.one_of(["0", "1", "2", "3", "4", "5", "6", "7"])
   s.string("0o")
   |> p.chain(fn(_) {
@@ -709,7 +719,7 @@ fn parse_int_16(it) {
   }
 }
 
-fn integer_base_16() -> TomlParser(Node) {
+fn integer_base_16() -> TomlParser(s, Node) {
   let oct_digit =
     s.one_of([
       "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E",
@@ -740,7 +750,7 @@ fn integer_base_16() -> TomlParser(Node) {
   })
 }
 
-fn integer() -> TomlParser(Node) {
+fn integer() -> TomlParser(s, Node) {
   integer_base_2()
   |> p.alt(fn() { integer_base_8() })
   |> p.alt(fn() { integer_base_16() })
@@ -774,7 +784,7 @@ fn to_unicode_char(lst: List(Int)) -> c.Char {
   do_to_unicode_char(value)
 }
 
-fn unixcode_hex_8() -> TomlParser(c.Char) {
+fn unixcode_hex_8() -> TomlParser(s, c.Char) {
   p.sat(is_hex)
   |> p.chain(fn(d1) {
     p.sat(is_hex)
@@ -807,7 +817,7 @@ fn unixcode_hex_8() -> TomlParser(c.Char) {
   })
 }
 
-fn unixcode_hex_4() -> TomlParser(c.Char) {
+fn unixcode_hex_4() -> TomlParser(s, c.Char) {
   p.sat(is_hex)
   |> p.chain(fn(d1) {
     p.sat(is_hex)
@@ -828,7 +838,7 @@ fn unixcode_hex_4() -> TomlParser(c.Char) {
   })
 }
 
-fn esc_seq() -> TomlParser(c.Char) {
+fn esc_seq() -> TomlParser(s, c.Char) {
   c.char("\\")
   |> p.chain(fn(_) {
     c.char("\"")
@@ -902,9 +912,11 @@ fn insert_named_section(
   ex: Explicitness,
   top_table: Table,
   named_sections: NamedSection,
-) -> TomlParser(Table) {
+) -> StatefulTomlParser(Table) {
   case named_sections {
-    #([], _node) -> todo
+    #([], _node) ->
+      p.fail()
+      |> p.expected("FATAL: Cannot call 'insert' without a name.")
     // In case 'name' is final (a top-level name)
     #([name], node) ->
       case
@@ -920,16 +932,21 @@ fn insert_named_section(
             VTable(nt) ->
               case merge(t, nt) {
                 Left(ds) -> name_insert_error(ds, name)
-                Right(r) ->
+                Right(r) -> {
+                  let result =
+                    top_table
+                    |> list.key_set(name, VTable(r))
                   case is_explicit(ex) {
-                    True -> todo
+                    True ->
+                      update_ex_state_or_error([name], node)
+                      |> p.map(fn(_) { result })
                     False ->
-                      top_table
-                      |> list.key_set(name, VTable(r))
+                      result
+                      |> p.of()
                   }
-                  |> p.of()
+                }
               }
-            _ -> todo
+            _ -> common_insert_error(node, [name])
           }
         Ok(VTArray(a)) ->
           case node {
@@ -937,37 +954,45 @@ fn insert_named_section(
               top_table
               |> list.key_set(name, VTArray(list.append(a, na)))
               |> p.of()
-            _ -> todo
+            _ -> common_insert_error(node, [name])
           }
-        Ok(_) -> todo
+        Ok(_) -> common_insert_error(node, [name])
       }
 
     // In case 'name' is not final (not a top-level name)
-    #([name, ..ns], node) ->
+    #([name, ..ns] as full_name, node) ->
       case
         top_table
         |> list.key_find(name)
       {
-        Error(_) ->
+        Error(_) -> {
+          let result =
+            insert_named_section(model.VImplicit, [], #(ns, node))
+            |> p.map(fn(tbl) {
+              top_table
+              |> list.key_set(name, VTable(tbl))
+            })
           case is_explicit(ex) {
-            True -> todo
-            False ->
-              insert_named_section(model.VImplicit, [], #(ns, node))
-              |> p.map(fn(tbl) {
-                top_table
-                |> list.key_set(name, VTable(tbl))
-              })
+            True ->
+              update_ex_state(full_name, node)
+              |> p.chain(fn(_) { result })
+            False -> result
           }
-        Ok(VTable(t)) ->
+        }
+        Ok(VTable(t)) -> {
+          let result =
+            insert_named_section(model.VImplicit, t, #(ns, node))
+            |> p.map(fn(tbl) {
+              top_table
+              |> list.key_set(name, VTable(tbl))
+            })
           case is_explicit(ex) {
-            True -> todo
-            False ->
-              insert_named_section(model.VImplicit, t, #(ns, node))
-              |> p.map(fn(tbl) {
-                top_table
-                |> list.key_set(name, VTable(tbl))
-              })
+            True ->
+              update_ex_state_or_error(full_name, node)
+              |> p.chain(fn(_) { result })
+            False -> result
           }
+        }
         Ok(VTArray(a)) -> {
           assert Ok(last) = list.last(a)
           insert_named_section(model.VImplicit, last, #(ns, node))
@@ -976,16 +1001,66 @@ fn insert_named_section(
             |> list.key_set(name, VTArray(list.append(list_init(a), [tbl])))
           })
         }
-        Ok(_) -> todo
+        Ok(_) -> common_insert_error(node, full_name)
       }
   }
 }
 
-fn update_state_or_error(name: List(String), node: Node) -> TomlParser(Nil) {
-  todo
+fn update_ex_state_or_error(
+  name: List(String),
+  node: Node,
+) -> StatefulTomlParser(Nil) {
+  p.get_state()
+  |> p.chain(fn(explictly_defiend_names) {
+    // 
+    case
+      explictly_defiend_names
+      |> set.contains(name)
+    {
+      True -> table_clash_error(name)
+      False -> update_ex_state(name, node)
+    }
+  })
 }
 
-fn name_insert_error(ns: List(String), name: String) -> TomlParser(a) {
+fn table_clash_error(ns: List(String)) -> StatefulTomlParser(a) {
+  let name =
+    ns
+    |> string.join(".")
+  p.fail()
+  |> p.expected(
+    ["Cannot redefine table named: '", name, "'."]
+    |> string.join(""),
+  )
+}
+
+fn common_insert_error(node: Node, ns: List(String)) -> StatefulTomlParser(a) {
+  let w = case node {
+    VTable(_) -> "tables"
+    _ -> "array of tables"
+  }
+  let n =
+    ns
+    |> string.join(".")
+  p.fail()
+  |> p.expected(
+    ["Cannot insert ", w, " as '", n, "' since key already exists."]
+    |> string.join(""),
+  )
+}
+
+fn update_ex_state(ns: List(String), node: Node) -> StatefulTomlParser(Nil) {
+  case node {
+    VTable(_) ->
+      p.modify_state(fn(old) {
+        old
+        |> set.insert(ns)
+      })
+    _ -> p.of(Nil)
+  }
+}
+
+fn name_insert_error(ns: List(String), name: String) -> StatefulTomlParser(a) {
   let ns =
     ns
     |> string.join("")
@@ -999,7 +1074,7 @@ fn name_insert_error(ns: List(String), name: String) -> TomlParser(a) {
 fn load_into_top_table(
   top_table: Table,
   named_sections: List(NamedSection),
-) -> TomlParser(Table) {
+) -> StatefulTomlParser(Table) {
   named_sections
   |> list.fold(
     p.of(top_table),
@@ -1010,7 +1085,7 @@ fn load_into_top_table(
   )
 }
 
-pub fn parser() -> TomlParser(Table) {
+pub fn parser() -> StatefulTomlParser(Table) {
   skip_blanks()
   |> p.chain(fn(_) {
     table()
@@ -1029,7 +1104,7 @@ pub fn parse(it: String) -> Result(Table, String) {
   case
     parser()
     |> p.chain_first(fn(_) { p.eof() })
-    |> s.run(it, Nil)
+    |> s.run(it, initial_state())
   {
     Ok(s) -> Ok(s.value)
     Error(e) ->

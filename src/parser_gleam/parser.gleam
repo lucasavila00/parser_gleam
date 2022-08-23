@@ -5,7 +5,7 @@ import fp_gl/models.{Monoid, Semigroup}
 import fp_gl/function.{Lazy, identity}
 import fp_gl/chain_rec.{tail_rec}
 import parser_gleam/parse_result.{
-  ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
+  ParseError, ParseResult, ParseSuccess, error, escalate, extend, success, with_expected,
 }
 import gleam/option.{None, Option, Some}
 import gleam/result
@@ -42,6 +42,26 @@ pub fn fail_at(i: Stream(i)) -> Parser(s, i, a) {
 // -------------------------------------------------------------------------------------
 // combinators
 // -------------------------------------------------------------------------------------
+
+pub fn get_state() -> Parser(s, i, s) {
+  fn(s, i) { Ok(ParseSuccess(value: s, next: i, start: i, state: s)) }
+}
+
+pub fn modify_state(updater: fn(s) -> s) -> Parser(s, i, Nil) {
+  fn(s, i) {
+    Ok(ParseSuccess(value: Nil, next: i, start: i, state: updater(s)))
+  }
+}
+
+pub fn put_state(p: Parser(s, i, a), state: s) -> Parser(s, i, Nil) {
+  fn(s, i) {
+    p(s, i)
+    |> result.map(fn(r) {
+      ParseSuccess(value: Nil, next: r.next, start: r.start, state: state)
+    })
+    |> result.map_error(fn(e) { ParseError(..e, state: state) })
+  }
+}
 
 /// A parser combinator which returns the provided parser unchanged, except
 /// that if it fails, the provided error message will be returned in the
