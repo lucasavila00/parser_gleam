@@ -13,8 +13,8 @@ import gleam/result
 // -------------------------------------------------------------------------------------
 // model
 // -------------------------------------------------------------------------------------
-pub type Parser(i, a) =
-  fn(Stream(i)) -> ParseResult(i, a)
+pub type Parser(s, i, a) =
+  fn(s, Stream(i)) -> ParseResult(s, i, a)
 
 // -------------------------------------------------------------------------------------
 // constructors
@@ -24,19 +24,19 @@ pub type Parser(i, a) =
 /// return the value provided as its argument, without consuming any input.
 ///
 /// This is equivalent to the monadic `of`.
-pub fn succeed(a) -> Parser(i, a) {
-  fn(i) { success(a, i, i) }
+pub fn succeed(a) -> Parser(s, i, a) {
+  fn(_s, i) { success(a, i, i) }
 }
 
 /// The `fail` parser will just fail immediately without consuming any input
-pub fn fail() -> Parser(i, a) {
-  fn(i) { error(i, None, None) }
+pub fn fail() -> Parser(s, i, a) {
+  fn(_s, i) { error(i, None, None) }
 }
 
 /// The `failAt` parser will fail immediately without consuming any input,
 /// but will report the failure at the provided input position.
-pub fn fail_at(i: Stream(i)) -> Parser(i, a) {
-  fn(_i) { error(i, None, None) }
+pub fn fail_at(i: Stream(i)) -> Parser(s, i, a) {
+  fn(_s, _i) { error(i, None, None) }
 }
 
 // -------------------------------------------------------------------------------------
@@ -46,17 +46,17 @@ pub fn fail_at(i: Stream(i)) -> Parser(i, a) {
 /// A parser combinator which returns the provided parser unchanged, except
 /// that if it fails, the provided error message will be returned in the
 /// ParseError`.
-pub fn expected(p: Parser(i, a), message: String) -> Parser(i, a) {
-  fn(i) {
-    p(i)
+pub fn expected(p: Parser(s, i, a), message: String) -> Parser(s, i, a) {
+  fn(s, i) {
+    p(s, i)
     |> result.map_error(fn(err) { with_expected(err, [message]) })
   }
 }
 
 /// The `item` parser consumes a single value, regardless of what it is,
 /// and returns it as its result.
-pub fn item() -> Parser(i, i) {
-  fn(i) {
+pub fn item() -> Parser(s, i, i) {
+  fn(s, i) {
     case get_and_next(i) {
       None -> error(i, None, None)
       Some(e) -> success(e.value, e.next, i)
@@ -67,9 +67,9 @@ pub fn item() -> Parser(i, i) {
 /// The `cut` parser combinator takes a parser and produces a new parser for
 /// which all errors are fatal, causing either to stop trying further
 /// parsers and return immediately with a fatal error.
-pub fn cut(p: Parser(i, a)) -> Parser(i, a) {
-  fn(i) {
-    p(i)
+pub fn cut(p: Parser(s, i, a)) -> Parser(s, i, a) {
+  fn(s, i) {
+    p(s, i)
     |> result.map_error(escalate)
   }
 }
@@ -81,11 +81,11 @@ pub fn cut(p: Parser(i, a)) -> Parser(i, a) {
 /// parsers.
 ///
 /// This is equivalent to the monadic `chain` operation.
-pub fn seq(fa: Parser(i, a), f: fn(a) -> Parser(i, b)) {
-  fn(i) {
-    fa(i)
-    |> result.then(fn(s) {
-      f(s.value)(s.next)
+pub fn seq(fa: Parser(s, i, a), f: fn(a) -> Parser(s, i, b)) {
+  fn(s, i) {
+    fa(s, i)
+    |> result.then(fn(s2) {
+      f(s2.value)(s, s2.next)
       |> result.then(fn(next) { success(next.value, next.next, i) })
     })
   }
@@ -99,16 +99,16 @@ pub fn seq(fa: Parser(i, a), f: fn(a) -> Parser(i, b)) {
 /// the second parser will not be attempted.
 ///
 /// This is equivalent to the `alt` operation.
-pub fn either(p: Parser(i, a), f: fn() -> Parser(i, a)) -> Parser(i, a) {
-  fn(i) {
-    let e = p(i)
+pub fn either(p: Parser(s, i, a), f: fn() -> Parser(s, i, a)) -> Parser(s, i, a) {
+  fn(s, i) {
+    let e = p(s, i)
     case e {
       Ok(e) -> Ok(e)
       Error(e) ->
         case e.fatal {
           True -> Error(e)
           False ->
-            f()(i)
+            f()(s, i)
             |> result.map_error(fn(err) { extend(e, err) })
         }
     }
@@ -120,17 +120,17 @@ pub fn either(p: Parser(i, a), f: fn() -> Parser(i, a)) -> Parser(i, a) {
 ///
 /// Useful if you want to keep track of where in the input stream a parsed
 /// token came from.
-pub fn with_start(p: Parser(i, a)) -> Parser(i, #(a, Stream(i))) {
-  fn(i) {
-    p(i)
+pub fn with_start(p: Parser(s, i, a)) -> Parser(s, i, #(a, Stream(i))) {
+  fn(s, i) {
+    p(s, i)
     |> result.map(fn(p) { ParseSuccess(#(p.value, i), p.next, p.start) })
   }
 }
 
 /// Matches the end of the stream.
-pub fn eof() -> Parser(i, Nil) {
+pub fn eof() -> Parser(s, i, Nil) {
   expected(
-    fn(i) {
+    fn(s, i) {
       case at_end(i) {
         True -> success(Nil, i, i)
         False -> error(i, None, None)
@@ -144,50 +144,53 @@ pub fn eof() -> Parser(i, Nil) {
 // pipeables
 // -------------------------------------------------------------------------------------
 
-pub fn alt(fa: Parser(i, a), that: Lazy(Parser(i, a))) {
+pub fn alt(fa: Parser(s, i, a), that: Lazy(Parser(s, i, a))) {
   either(fa, that)
 }
 
-pub fn chain(ma: Parser(i, a), f: fn(a) -> Parser(i, b)) {
+pub fn chain(ma: Parser(s, i, a), f: fn(a) -> Parser(s, i, b)) {
   seq(ma, f)
 }
 
-pub fn chain_first(ma: Parser(i, a), f: fn(a) -> Parser(i, b)) -> Parser(i, a) {
+pub fn chain_first(
+  ma: Parser(s, i, a),
+  f: fn(a) -> Parser(s, i, b),
+) -> Parser(s, i, a) {
   chain(ma, fn(a) { map(f(a), fn(_x) { a }) })
 }
 
-pub fn of(a) -> Parser(i, a) {
+pub fn of(a) -> Parser(s, i, a) {
   succeed(a)
 }
 
-pub fn map(ma: Parser(i, a), f: fn(a) -> b) -> Parser(i, b) {
-  fn(i) {
-    ma(i)
+pub fn map(ma: Parser(s, i, a), f: fn(a) -> b) -> Parser(s, i, b) {
+  fn(s, i) {
+    ma(s, i)
     |> result.map(fn(s) { ParseSuccess(f(s.value), s.next, s.start) })
   }
 }
 
-pub fn ap(mab: Parser(i, fn(a) -> b), ma: Parser(i, a)) -> Parser(i, b) {
+pub fn ap(mab: Parser(s, i, fn(a) -> b), ma: Parser(s, i, a)) -> Parser(s, i, b) {
   chain(mab, fn(f) { map(ma, f) })
 }
 
-pub fn ap_first(fb: Parser(i, b)) {
-  fn(fa: Parser(i, a)) -> Parser(i, a) {
+pub fn ap_first(fb: Parser(s, i, b)) {
+  fn(fa: Parser(s, i, a)) -> Parser(s, i, a) {
     ap(map(fa, fn(a) { fn(_x) { a } }), fb)
   }
 }
 
-pub fn ap_second(fb: Parser(i, b)) {
-  fn(fa: Parser(i, a)) -> Parser(i, b) {
+pub fn ap_second(fb: Parser(s, i, b)) {
+  fn(fa: Parser(s, i, a)) -> Parser(s, i, b) {
     ap(map(fa, fn(_x) { fn(b) { b } }), fb)
   }
 }
 
-pub fn flatten(mma: Parser(i, Parser(i, a))) -> Parser(i, a) {
+pub fn flatten(mma: Parser(s, i, Parser(s, i, a))) -> Parser(s, i, a) {
   chain(mma, identity)
 }
 
-pub fn zero() -> Parser(i, a) {
+pub fn zero() -> Parser(s, i, a) {
   fail()
 }
 
@@ -195,10 +198,13 @@ type Next(i, a) {
   Next(value: a, stream: Stream(i))
 }
 
-pub fn chain_rec(a: a, f: fn(a) -> Parser(i, Result(b, a))) -> Parser(i, b) {
+pub fn chain_rec(
+  a: a,
+  f: fn(a) -> Parser(s, i, Result(b, a)),
+) -> Parser(s, i, b) {
   let split = fn(start: Stream(i)) {
     fn(result: ParseSuccess(i, Result(b, a))) -> Result(
-      ParseResult(i, b),
+      ParseResult(s, i, b),
       Next(i, a),
     ) {
       case result.value {
@@ -207,11 +213,11 @@ pub fn chain_rec(a: a, f: fn(a) -> Parser(i, Result(b, a))) -> Parser(i, b) {
       }
     }
   }
-  fn(start) {
+  fn(pstate, start) {
     tail_rec(
       Next(a, start),
       fn(state) {
-        let result = f(state.value)(state.stream)
+        let result = f(state.value)(pstate, state.stream)
         case result {
           Error(r) -> Ok(error(state.stream, Some(r.expected), Some(r.fatal)))
           Ok(r) -> split(start)(r)
@@ -229,7 +235,7 @@ pub fn chain_rec(a: a, f: fn(a) -> Parser(i, Result(b, a))) -> Parser(i, b) {
 /// a single character if calling that predicate function with the character
 /// as its argument returns `true`. If it returns `false`, the parser will
 /// fail.
-pub fn sat(predicate: Predicate(i)) -> Parser(i, i) {
+pub fn sat(predicate: Predicate(i)) -> Parser(s, i, i) {
   with_start(item())
   |> chain(fn(t) {
     let #(a, start) = t
@@ -247,7 +253,7 @@ pub fn sat(predicate: Predicate(i)) -> Parser(i, i) {
 /// Takes two parsers `p1` and `p2`, returning a parser which will match
 /// `p1` first, discard the result, then either match `p2` or produce a fatal
 /// error.
-pub fn cut_with(p1: Parser(i, a), p2: Parser(i, b)) -> Parser(i, b) {
+pub fn cut_with(p1: Parser(s, i, a), p2: Parser(s, i, b)) -> Parser(s, i, b) {
   p1
   |> ap_second(cut(p2))
 }
@@ -256,7 +262,7 @@ pub fn cut_with(p1: Parser(i, a), p2: Parser(i, b)) -> Parser(i, b) {
 /// parser on the input, and if it fails, it will returns the empty value (as
 /// defined by `empty`) as a result, without consuming any input.
 pub fn maybe(m: Monoid(a)) {
-  fn(p: Parser(i, a)) -> Parser(i, a) {
+  fn(p: Parser(s, i, a)) -> Parser(s, i, a) {
     p
     |> alt(fn() { of(m.empty) })
   }
@@ -269,7 +275,7 @@ pub fn maybe(m: Monoid(a)) {
 ///
 /// Read that as "match this parser zero or more times and give me a list of
 /// the results."
-pub fn many(p: Parser(i, a)) -> Parser(i, List(a)) {
+pub fn many(p: Parser(s, i, a)) -> Parser(s, i, List(a)) {
   many1(p)
   |> map(nea.to_list)
   |> alt(fn() { of([]) })
@@ -278,7 +284,7 @@ pub fn many(p: Parser(i, a)) -> Parser(i, List(a)) {
 /// The `many1` combinator is just like the `many` combinator, except it
 /// requires its wrapped parser to match at least once. The resulting list is
 /// thus guaranteed to contain at least one value.
-pub fn many1(parser: Parser(i, a)) -> Parser(i, NonEmptyList(a)) {
+pub fn many1(parser: Parser(s, i, a)) -> Parser(s, i, NonEmptyList(a)) {
   parser
   |> chain(fn(head) {
     chain_rec(
@@ -295,7 +301,7 @@ pub fn many1(parser: Parser(i, a)) -> Parser(i, NonEmptyList(a)) {
 /// Matches the provided parser `p` zero or more times, but requires the
 /// parser `sep` to match once in between each match of `p`. In other words,
 /// use `sep` to match separator characters in between matches of `p`.
-pub fn sep_by(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, List(b)) {
+pub fn sep_by(sep: Parser(s, i, a), p: Parser(s, i, b)) -> Parser(s, i, List(b)) {
   sep_by1(sep, p)
   |> map(nea.to_list)
   |> alt(fn() { of([]) })
@@ -304,7 +310,10 @@ pub fn sep_by(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, List(b)) {
 /// Matches the provided parser `p` one or more times, but requires the
 /// parser `sep` to match once in between each match of `p`. In other words,
 /// use `sep` to match separator characters in between matches of `p`.
-pub fn sep_by1(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, NonEmptyList(b)) {
+pub fn sep_by1(
+  sep: Parser(s, i, a),
+  p: Parser(s, i, b),
+) -> Parser(s, i, NonEmptyList(b)) {
   p
   |> chain(fn(head) {
     many(
@@ -321,9 +330,9 @@ pub fn sep_by1(sep: Parser(i, a), p: Parser(i, b)) -> Parser(i, NonEmptyList(b))
 /// Like `sepBy1`, but cut on the separator, so that matching a `sep` not
 /// followed by a `p` will cause a fatal error.
 pub fn sep_by_cut(
-  sep: Parser(i, a),
-  p: Parser(i, b),
-) -> Parser(i, NonEmptyList(b)) {
+  sep: Parser(s, i, a),
+  p: Parser(s, i, b),
+) -> Parser(s, i, NonEmptyList(b)) {
   p
   |> chain(fn(head) {
     many(cut_with(sep, p))
@@ -337,9 +346,9 @@ pub fn sep_by_cut(
 /// Filters the result of a parser based upon a `Refinement` or a `Predicate`.
 ///
 pub fn filter(predicate: Predicate(a)) {
-  fn(p: Parser(i, a)) -> Parser(i, a) {
-    fn(i) {
-      p(i)
+  fn(p: Parser(s, i, a)) -> Parser(s, i, a) {
+    fn(s, i) {
+      p(s, i)
       |> result.then(fn(next) {
         case predicate(next.value) {
           True -> Ok(next)
@@ -353,8 +362,8 @@ pub fn filter(predicate: Predicate(a)) {
 /// Matches the provided parser `p` that occurs between the provided `left` and `right` parsers.
 ///
 /// `p` is polymorphic in its return type, because in general bounds and actual parser could return different types.
-pub fn between(left: Parser(i, a), right: Parser(i, a)) {
-  fn(p: Parser(i, b)) -> Parser(i, b) {
+pub fn between(left: Parser(s, i, a), right: Parser(s, i, a)) {
+  fn(p: Parser(s, i, b)) -> Parser(s, i, b) {
     left
     |> chain(fn(_x) { p })
     |> chain_first(fn(_x) { right })
@@ -362,22 +371,22 @@ pub fn between(left: Parser(i, a), right: Parser(i, a)) {
 }
 
 /// Matches the provided parser `p` that is surrounded by the `bound` parser. Shortcut for `between(bound, bound)`.
-pub fn surrounded_by(bound: Parser(i, a)) {
-  fn(p: Parser(i, b)) -> Parser(i, b) { between(bound, bound)(p) }
+pub fn surrounded_by(bound: Parser(s, i, a)) {
+  fn(p: Parser(s, i, b)) -> Parser(s, i, b) { between(bound, bound)(p) }
 }
 
 /// Takes a `Parser` and tries to match it without consuming any input.
 ///
-pub fn look_ahead(p: Parser(i, a)) -> Parser(i, a) {
-  fn(i) {
-    p(i)
+pub fn look_ahead(p: Parser(s, i, a)) -> Parser(s, i, a) {
+  fn(s, i) {
+    p(s, i)
     |> result.then(fn(next) { success(next.value, i, i) })
   }
 }
 
 /// Takes a `Predicate` and continues parsing until the given `Predicate` is satisfied.
 ///
-pub fn take_until(predicate: Predicate(i)) -> Parser(i, List(i)) {
+pub fn take_until(predicate: Predicate(i)) -> Parser(s, i, List(i)) {
   predicate
   |> not
   |> sat
@@ -386,7 +395,7 @@ pub fn take_until(predicate: Predicate(i)) -> Parser(i, List(i)) {
 
 /// Returns `Some<A>` if the specified parser succeeds, otherwise returns `None`.
 ///
-pub fn optional(parser: Parser(i, a)) -> Parser(i, Option(a)) {
+pub fn optional(parser: Parser(s, i, a)) -> Parser(s, i, Option(a)) {
   parser
   |> map(Some)
   |> alt(fn() { succeed(None) })
@@ -398,9 +407,9 @@ pub fn optional(parser: Parser(i, a)) -> Parser(i, Option(a)) {
 /// result, or the empty list if the parser never succeeded.
 ///
 pub fn many_till(
-  parser: Parser(i, a),
-  terminator: Parser(i, b),
-) -> Parser(i, List(a)) {
+  parser: Parser(s, i, a),
+  terminator: Parser(s, i, b),
+) -> Parser(s, i, List(a)) {
   terminator
   |> map(fn(_) { [] })
   |> alt(fn() {
@@ -414,9 +423,9 @@ pub fn many_till(
 /// parser. The resulting list is thus guaranteed to contain at least one value.
 ///
 pub fn many1_till(
-  parser: Parser(i, a),
-  terminator: Parser(i, b),
-) -> Parser(i, NonEmptyList(a)) {
+  parser: Parser(s, i, a),
+  terminator: Parser(s, i, b),
+) -> Parser(s, i, NonEmptyList(a)) {
   parser
   |> chain(fn(x) {
     chain_rec(
@@ -437,7 +446,7 @@ pub fn many1_till(
 // instances
 // -------------------------------------------------------------------------------------
 
-pub fn get_semigroup(s: Semigroup(a)) -> Semigroup(Parser(i, a)) {
+pub fn get_semigroup(s: Semigroup(a)) -> Semigroup(Parser(s, i, a)) {
   Semigroup(fn(x, y) { ap(map(x, fn(x) { fn(y) { s.concat(x, y) } }), y) })
 }
 
@@ -445,7 +454,7 @@ fn monoid_to_semigroup(m: Monoid(a)) -> Semigroup(a) {
   Semigroup(m.concat)
 }
 
-pub fn get_monoid(m: Monoid(a)) -> Monoid(Parser(i, a)) {
+pub fn get_monoid(m: Monoid(a)) -> Monoid(Parser(s, i, a)) {
   let Semigroup(concat) =
     m
     |> monoid_to_semigroup()

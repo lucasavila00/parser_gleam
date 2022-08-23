@@ -14,14 +14,18 @@ pub type ParseError(i) {
   ParseError(input: Stream(i), expected: List(String), fatal: Bool)
 }
 
-pub type ParseResult(i, a) =
+pub type ParseResult(s, i, a) =
   Result(ParseSuccess(i, a), ParseError(i))
 
 // -------------------------------------------------------------------------------------
 // constructors
 // -------------------------------------------------------------------------------------
 
-pub fn success(value: a, next: Stream(i), start: Stream(i)) -> ParseResult(i, a) {
+pub fn success(
+  value: a,
+  next: Stream(i),
+  start: Stream(i),
+) -> ParseResult(s, i, a) {
   Ok(ParseSuccess(value: value, next: next, start: start))
 }
 
@@ -29,7 +33,7 @@ pub fn error(
   input: Stream(i),
   expected: Option(List(String)),
   fatal: Option(Bool),
-) -> ParseResult(i, a) {
+) -> ParseResult(s, i, a) {
   Error(ParseError(
     input: input,
     expected: expected

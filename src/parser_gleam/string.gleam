@@ -16,7 +16,7 @@ import fp_gl/fstring
 // -------------------------------------------------------------------------------------
 
 /// Matches the exact string provided.
-pub fn string(s: String) -> Parser(Char, String) {
+pub fn string(s: String) -> Parser(s, Char, String) {
   p.expected(
     p.chain_rec(
       s,
@@ -33,7 +33,7 @@ pub fn string(s: String) -> Parser(Char, String) {
   )
 }
 
-pub fn one_of(lst: List(String)) -> Parser(Char, String) {
+pub fn one_of(lst: List(String)) -> Parser(s, Char, String) {
   lst
   |> list.fold(
     p.fail(),
@@ -49,7 +49,7 @@ pub fn one_of(lst: List(String)) -> Parser(Char, String) {
 // -------------------------------------------------------------------------------------
 
 /// Matches one of a list of strings.
-pub fn fold(ass: List(Parser(i, String))) -> Parser(i, String) {
+pub fn fold(ass: List(Parser(s, i, String))) -> Parser(s, i, String) {
   ass
   |> m.concat_all(p.get_monoid(fstring.monoid()))
 }
@@ -58,19 +58,19 @@ pub fn fold(ass: List(Parser(i, String))) -> Parser(i, String) {
 // combinators
 // -------------------------------------------------------------------------------------
 
-pub fn maybe(p: Parser(i, String)) -> Parser(i, String) {
+pub fn maybe(p: Parser(s, i, String)) -> Parser(s, i, String) {
   p.maybe(fstring.monoid())(p)
 }
 
 /// Matches the given parser zero or more times, returning a string of the
 /// entire match
-pub fn many(parser: Parser(Char, String)) -> Parser(Char, String) {
+pub fn many(parser: Parser(s, Char, String)) -> Parser(s, Char, String) {
   maybe(many1(parser))
 }
 
 /// Matches the given parser zero or more times, returning a string of the
 /// entire match
-pub fn many1(parser: Parser(Char, String)) -> Parser(Char, String) {
+pub fn many1(parser: Parser(s, Char, String)) -> Parser(s, Char, String) {
   p.many1(parser)
   |> p.map(fn(nea) {
     nea
@@ -80,26 +80,26 @@ pub fn many1(parser: Parser(Char, String)) -> Parser(Char, String) {
 }
 
 /// Matches zero or more whitespace characters.
-pub fn spaces() -> Parser(Char, String) {
+pub fn spaces() -> Parser(s, Char, String) {
   c.many(c.space())
 }
 
 /// Matches one or more whitespace characters.
-pub fn spaces1() -> Parser(Char, String) {
+pub fn spaces1() -> Parser(s, Char, String) {
   c.many1(c.space())
 }
 
 /// Matches zero or more non-whitespace characters.
-pub fn not_spaces() -> Parser(Char, String) {
+pub fn not_spaces() -> Parser(s, Char, String) {
   c.many(c.not_space())
 }
 
 /// Matches one or more non-whitespace characters.
-pub fn not_spaces1() -> Parser(Char, String) {
+pub fn not_spaces1() -> Parser(s, Char, String) {
   c.many1(c.not_space())
 }
 
-pub fn int() -> Parser(Char, Int) {
+pub fn int() -> Parser(s, Char, Int) {
   let exp =
     [maybe(c.char("-")), c.many1(c.digit())]
     |> fold()
@@ -113,7 +113,7 @@ pub fn int() -> Parser(Char, Int) {
   p.expected(exp, "an integer")
 }
 
-pub fn float() -> Parser(Char, Float) {
+pub fn float() -> Parser(s, Char, Float) {
   let exp =
     [
       maybe(c.char("-")),
@@ -142,18 +142,21 @@ pub fn float() -> Parser(Char, Float) {
 /// Parses a double quoted string, with support for escaping double quotes
 /// inside it, and returns the inner string. Does not perform any other form
 /// of string escaping.
-pub fn double_quoted_string() -> Parser(String, String) {
+pub fn double_quoted_string() -> Parser(s, String, String) {
   many(p.either(string("\\\""), fn() { c.not_char("\"") }))
   |> p.surrounded_by(c.char("\""))
 }
 
 /// Creates a stream from `string` and runs the parser.
-pub fn run(str: String) {
-  fn(p: Parser(Char, a)) -> pr.ParseResult(Char, a) {
-    p(s.stream(
-      str
-      |> string.to_graphemes(),
-      None,
-    ))
+pub fn run(str: String, initial_state: s) {
+  fn(p: Parser(s, Char, a)) -> pr.ParseResult(s, Char, a) {
+    p(
+      initial_state,
+      s.stream(
+        str
+        |> string.to_graphemes(),
+        None,
+      ),
+    )
   }
 }

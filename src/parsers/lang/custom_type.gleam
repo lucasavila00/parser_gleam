@@ -94,7 +94,7 @@ fn string_eof() {
   |> p.map(fn(_) { "" })
 }
 
-fn type_opener_with_comments() -> Parser(String, Option(String)) {
+fn type_opener_with_comments() -> Parser(Nil, String, Option(String)) {
   s.string("///")
   |> p.chain(fn(_) { p.many_till(p.item(), c.char("\n")) })
   |> p.chain_first(fn(_) { s.string("pub type ") })
@@ -106,7 +106,7 @@ fn type_opener_with_comments() -> Parser(String, Option(String)) {
   })
 }
 
-fn type_opener() -> Parser(String, Option(String)) {
+fn type_opener() -> Parser(Nil, String, Option(String)) {
   type_opener_with_comments()
   |> p.alt(fn() {
     s.string("pub type ")
@@ -114,7 +114,7 @@ fn type_opener() -> Parser(String, Option(String)) {
   })
 }
 
-fn ignored_code_parser() -> Parser(String, IgnoredCode) {
+fn ignored_code_parser() -> Parser(Nil, String, IgnoredCode) {
   p.many_till(
     p.item(),
     p.look_ahead(
@@ -141,7 +141,7 @@ fn type_ast_end_look_ahead() {
   p.look_ahead(type_ast_end())
 }
 
-fn type_ast_constructor_arguments_parser() -> Parser(String, List(TypeAst)) {
+fn type_ast_constructor_arguments_parser() -> Parser(Nil, String, List(TypeAst)) {
   c.char("(")
   |> p.chain(fn(_) {
     p.many1_till(type_ast_parser(), type_ast_end_look_ahead())
@@ -157,7 +157,7 @@ fn type_ast_constructor_arguments_parser() -> Parser(String, List(TypeAst)) {
 
 fn type_ast_constructor_no_module_parser(
   module: Option(String),
-) -> Parser(String, TypeAst) {
+) -> Parser(Nil, String, TypeAst) {
   c.upper()
   |> p.chain(fn(head) {
     p.many_till(
@@ -184,7 +184,7 @@ fn type_ast_constructor_no_module_parser(
   })
 }
 
-fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
+fn type_ast_constructor_parser() -> Parser(Nil, String, TypeAst) {
   type_ast_constructor_no_module_parser(None)
   |> p.alt(fn() {
     p.many1_till(c.lower(), c.char("."))
@@ -199,7 +199,7 @@ fn type_ast_constructor_parser() -> Parser(String, TypeAst) {
   })
 }
 
-fn type_ast_fn_parser() -> Parser(String, TypeAst) {
+fn type_ast_fn_parser() -> Parser(Nil, String, TypeAst) {
   s.string("fn")
   |> p.chain(fn(_) {
     s.spaces()
@@ -231,12 +231,12 @@ fn type_ast_fn_parser() -> Parser(String, TypeAst) {
   })
 }
 
-fn type_ast_var_parser() -> Parser(String, TypeAst) {
+fn type_ast_var_parser() -> Parser(Nil, String, TypeAst) {
   p.many1_till(c.lower(), type_ast_end_look_ahead())
   |> p.map(fn(chars) { Var(name: to_name(chars)) })
 }
 
-fn type_ast_tuple_parser() -> Parser(String, TypeAst) {
+fn type_ast_tuple_parser() -> Parser(Nil, String, TypeAst) {
   c.char("#")
   |> p.chain(fn(_) {
     c.char("(")
@@ -247,7 +247,7 @@ fn type_ast_tuple_parser() -> Parser(String, TypeAst) {
   })
 }
 
-fn type_ast_hole_parser() -> Parser(String, TypeAst) {
+fn type_ast_hole_parser() -> Parser(Nil, String, TypeAst) {
   c.char("_")
   |> p.chain(fn(_) {
     p.many_till(p.item(), type_ast_end_look_ahead())
@@ -260,7 +260,7 @@ fn type_ast_hole_parser() -> Parser(String, TypeAst) {
   })
 }
 
-fn type_ast_parser_no_comma_end() -> Parser(String, TypeAst) {
+fn type_ast_parser_no_comma_end() -> Parser(Nil, String, TypeAst) {
   type_ast_hole_parser()
   |> p.alt(type_ast_tuple_parser)
   |> p.alt(type_ast_fn_parser)
@@ -268,7 +268,7 @@ fn type_ast_parser_no_comma_end() -> Parser(String, TypeAst) {
   |> p.alt(type_ast_var_parser)
 }
 
-fn type_ast_parser() -> Parser(String, TypeAst) {
+fn type_ast_parser() -> Parser(Nil, String, TypeAst) {
   type_ast_parser_no_comma_end()
   |> p.chain_first(fn(_) {
     p.optional(s.string(","))
@@ -284,6 +284,7 @@ fn record_constructor_argment_end() {
 }
 
 pub fn record_constructor_argument_parser() -> Parser(
+  Nil,
   String,
   RecordConstructorArg,
 ) {
@@ -309,7 +310,11 @@ fn record_constructor_name() {
   )
 }
 
-fn record_constructor_arguments() -> Parser(String, List(RecordConstructorArg)) {
+fn record_constructor_arguments() -> Parser(
+  Nil,
+  String,
+  List(RecordConstructorArg),
+) {
   p.either(
     c.char("(")
     |> p.chain(fn(_) {
@@ -324,7 +329,7 @@ fn record_constructor_arguments() -> Parser(String, List(RecordConstructorArg)) 
   )
 }
 
-pub fn record_constructor_parser() -> Parser(String, RecordConstructor) {
+pub fn record_constructor_parser() -> Parser(Nil, String, RecordConstructor) {
   record_constructor_name()
   |> p.chain(fn(name) {
     record_constructor_arguments()
@@ -334,7 +339,7 @@ pub fn record_constructor_parser() -> Parser(String, RecordConstructor) {
   })
 }
 
-fn custom_type_parameters_name_parser() -> Parser(String, String) {
+fn custom_type_parameters_name_parser() -> Parser(Nil, String, String) {
   p.many1_till(
     p.item(),
     c.char(",")
@@ -348,7 +353,7 @@ fn custom_type_parameters_name_parser() -> Parser(String, String) {
   })
 }
 
-fn custom_type_parameters_parser() -> Parser(String, List(String)) {
+fn custom_type_parameters_parser() -> Parser(Nil, String, List(String)) {
   p.either(
     c.char("(")
     |> p.chain(fn(_) {
@@ -360,7 +365,7 @@ fn custom_type_parameters_parser() -> Parser(String, List(String)) {
   )
 }
 
-fn custom_type_parser() -> Parser(String, XCustomType) {
+fn custom_type_parser() -> Parser(Nil, String, XCustomType) {
   type_opener()
   |> p.chain(fn(doc) {
     p.many1_till(
@@ -391,7 +396,7 @@ fn custom_type_parser() -> Parser(String, XCustomType) {
   })
 }
 
-fn block_parser() -> Parser(String, #(IgnoredCode, Option(XCustomType))) {
+fn block_parser() -> Parser(Nil, String, #(IgnoredCode, Option(XCustomType))) {
   ignored_code_parser()
   |> p.chain(fn(code) {
     p.optional(custom_type_parser())
@@ -407,7 +412,7 @@ fn block_to_ast_nodes(block) {
   }
 }
 
-pub fn ast_parser() -> Parser(String, Ast) {
+pub fn ast_parser() -> Parser(Nil, String, Ast) {
   p.many1_till(block_parser(), p.eof())
   |> p.map(nel.to_list)
   |> p.map(fn(blocks) { list.flat_map(blocks, block_to_ast_nodes) })

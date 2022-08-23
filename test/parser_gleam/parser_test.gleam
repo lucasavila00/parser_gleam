@@ -13,15 +13,20 @@ pub fn main() {
   gleeunit.main()
 }
 
+fn s_run(parser, str) {
+  parser
+  |> s.run(str, Nil)
+}
+
 pub fn parser_eof_test() {
   let parser = p.eof()
 
   parser
-  |> s.run("")
+  |> s_run("")
   |> should.equal(success(Nil, stream([], None), stream([], None)))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(error(stream(["a"], None), Some(["end of file"]), None))
 }
 
@@ -29,7 +34,7 @@ pub fn parser_cut_test() {
   let parser = p.cut(c.char("a"))
 
   parser
-  |> s.run("ab")
+  |> s_run("ab")
   |> should.equal(success(
     "a",
     stream(["a", "b"], Some(1)),
@@ -37,7 +42,7 @@ pub fn parser_cut_test() {
   ))
 
   parser
-  |> s.run("bb")
+  |> s_run("bb")
   |> should.equal(error(stream(["b", "b"], None), Some(["\"a\""]), Some(True)))
 }
 
@@ -45,33 +50,33 @@ pub fn parser_either_test() {
   let parser1 = p.either(c.char("a"), fn() { c.char("b") })
 
   parser1
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success("a", stream(["a"], Some(1)), stream(["a"], None)))
 
   parser1
-  |> s.run("b")
+  |> s_run("b")
   |> should.equal(success("b", stream(["b"], Some(1)), stream(["b"], None)))
 
   parser1
-  |> s.run("c")
+  |> s_run("c")
   |> should.equal(error(stream(["c"], None), Some(["\"a\"", "\"b\""]), None))
 
   let parser2 = p.either(p.cut(c.char("a")), fn() { c.char("b") })
 
   parser2
-  |> s.run("c")
+  |> s_run("c")
   |> should.equal(error(stream(["c"], None), Some(["\"a\""]), Some(True)))
 
   let parser3 = p.either(s.string("aa"), fn() { c.char("b") })
 
   parser3
-  |> s.run("ab")
+  |> s_run("ab")
   |> should.equal(error(stream(["a", "b"], Some(1)), Some(["\"aa\""]), None))
 
   let parser4 = p.either(c.char("a"), fn() { s.string("bb") })
 
   parser4
-  |> s.run("bc")
+  |> s_run("bc")
   |> should.equal(error(stream(["b", "c"], Some(1)), Some(["\"bb\""]), None))
 }
 
@@ -81,7 +86,7 @@ pub fn parser_map_test() {
     |> p.map(fn(_) { "b" })
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success("b", stream(["a"], Some(1)), stream(["a"], None)))
 }
 
@@ -91,7 +96,7 @@ pub fn parser_ap_test() {
     |> p.ap(c.char("a"))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success(1, stream(["a"], Some(1)), stream(["a"], None)))
 }
 
@@ -101,7 +106,7 @@ pub fn parser_ap_first_test() {
     |> p.ap_first(s.spaces())
 
   parser
-  |> s.run("a ")
+  |> s_run("a ")
   |> should.equal(success(
     "a",
     stream(["a", " "], Some(2)),
@@ -115,7 +120,7 @@ pub fn parser_ap_second_test() {
     |> p.ap_second(s.spaces())
 
   parser
-  |> s.run("a ")
+  |> s_run("a ")
   |> should.equal(success(
     " ",
     stream(["a", " "], Some(2)),
@@ -130,7 +135,7 @@ pub fn parser_flatten_test() {
 
   parser
   |> p.flatten()
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success("a", stream(["a"], Some(1)), stream(["a"], None)))
 }
 
@@ -138,7 +143,7 @@ pub fn parser_cut_with_test() {
   let parser = p.cut_with(c.char("a"), c.char("b"))
 
   parser
-  |> s.run("ac")
+  |> s_run("ac")
   |> should.equal(error(
     stream(["a", "c"], Some(1)),
     Some(["\"b\""]),
@@ -150,15 +155,15 @@ pub fn parser_sep_by_test() {
   let parser = p.sep_by(c.char(","), p.sat(fn(c) { c != "," }))
 
   parser
-  |> s.run("")
+  |> s_run("")
   |> should.equal(success([], stream([], None), stream([], None)))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success(["a"], stream(["a"], Some(1)), stream(["a"], None)))
 
   parser
-  |> s.run("a,b")
+  |> s_run("a,b")
   |> should.equal(success(
     ["a", "b"],
     stream(["a", ",", "b"], Some(3)),
@@ -170,11 +175,11 @@ pub fn parser_sep_by1_test() {
   let parser = p.sep_by1(c.char(","), c.char("a"))
 
   parser
-  |> s.run("")
+  |> s_run("")
   |> should.equal(error(stream([], None), Some(["\"a\""]), None))
 
   parser
-  |> s.run("a,b")
+  |> s_run("a,b")
   |> should.equal(success(
     nea.of("a"),
     stream(["a", ",", "b"], Some(1)),
@@ -186,7 +191,7 @@ pub fn parser_sep_by_cut_test() {
   let parser = p.sep_by_cut(c.char(","), c.char("a"))
 
   parser
-  |> s.run("a,b")
+  |> s_run("a,b")
   |> should.equal(error(
     stream(["a", ",", "b"], Some(2)),
     Some(["\"a\""]),
@@ -194,7 +199,7 @@ pub fn parser_sep_by_cut_test() {
   ))
 
   parser
-  |> s.run("a,a")
+  |> s_run("a,a")
   |> should.equal(success(
     nea.of("a")
     |> nea.append("a"),
@@ -212,7 +217,7 @@ pub fn parser_filter_test() {
     )
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(error(
     stream(["a"], None),
     Some(["anything except \"a\""]),
@@ -220,7 +225,7 @@ pub fn parser_filter_test() {
   ))
 
   parser
-  |> s.run("b")
+  |> s_run("b")
   |> should.equal(success("b", stream(["b"], Some(1)), stream(["b"], None)))
 }
 
@@ -229,11 +234,11 @@ pub fn parser_between_monomorphic_test() {
   let parser = between_parens(c.char("a"))
 
   parser
-  |> s.run("(a")
+  |> s_run("(a")
   |> should.equal(error(stream(["(", "a"], Some(2)), Some(["\")\""]), None))
 
   parser
-  |> s.run("(a)")
+  |> s_run("(a)")
   |> should.equal(success(
     "a",
     stream(["(", "a", ")"], Some(3)),
@@ -246,11 +251,11 @@ pub fn parser_between_polymorphic_test() {
   let parser = between_parens(s.int())
 
   parser
-  |> s.run("(1")
+  |> s_run("(1")
   |> should.equal(error(stream(["(", "1"], Some(2)), Some(["\")\""]), None))
 
   parser
-  |> s.run("(1)")
+  |> s_run("(1)")
   |> should.equal(success(
     1,
     stream(["(", "1", ")"], Some(3)),
@@ -263,11 +268,11 @@ pub fn parser_surrounded_by_monomorphic_test() {
   let parser = surrounded_by_pipes(c.char("a"))
 
   parser
-  |> s.run("|a")
+  |> s_run("|a")
   |> should.equal(error(stream(["|", "a"], Some(2)), Some(["\"|\""]), None))
 
   parser
-  |> s.run("|a|")
+  |> s_run("|a|")
   |> should.equal(success(
     "a",
     stream(["|", "a", "|"], Some(3)),
@@ -280,11 +285,11 @@ pub fn parser_surrounded_by_polymorphic_test() {
   let parser = surrounded_by_pipes(s.int())
 
   parser
-  |> s.run("|1")
+  |> s_run("|1")
   |> should.equal(error(stream(["|", "1"], Some(2)), Some(["\"|\""]), None))
 
   parser
-  |> s.run("|1|")
+  |> s_run("|1|")
   |> should.equal(success(
     1,
     stream(["|", "1", "|"], Some(3)),
@@ -298,11 +303,11 @@ pub fn parser_look_ahead_test() {
     |> s.fold()
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(error(stream(["a"], Some(1)), Some(["\"b\""]), None))
 
   parser
-  |> s.run("ab")
+  |> s_run("ab")
   |> should.equal(success(
     "abb",
     stream(["a", "b"], Some(2)),
@@ -313,7 +318,7 @@ pub fn parser_look_ahead_test() {
 pub fn parser_take_until_test() {
   let parser = p.take_until(fn(c) { c == "c" })
   parser
-  |> s.run("ab")
+  |> s_run("ab")
   |> should.equal(success(
     ["a", "b"],
     stream(["a", "b"], Some(2)),
@@ -321,7 +326,7 @@ pub fn parser_take_until_test() {
   ))
 
   parser
-  |> s.run("abc")
+  |> s_run("abc")
   |> should.equal(success(
     ["a", "b"],
     stream(["a", "b", "c"], Some(2)),
@@ -333,7 +338,7 @@ pub fn parser_optional_test() {
   let parser = p.optional(p.sat(fn(c) { c == "a" }))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success(
     Some("a"),
     stream(["a"], Some(1)),
@@ -341,7 +346,7 @@ pub fn parser_optional_test() {
   ))
 
   parser
-  |> s.run("b")
+  |> s_run("b")
   |> should.equal(success(None, stream(["b"], Some(0)), stream(["b"], None)))
 }
 
@@ -349,7 +354,7 @@ pub fn parser_many_till_test() {
   let parser = p.many_till(c.letter(), c.char("-"))
 
   parser
-  |> s.run("a1-")
+  |> s_run("a1-")
   |> should.equal(error(
     stream(["a", "1", "-"], Some(1)),
     Some(["\"-\"", "a letter"]),
@@ -357,11 +362,11 @@ pub fn parser_many_till_test() {
   ))
 
   parser
-  |> s.run("-")
+  |> s_run("-")
   |> should.equal(success([], stream(["-"], Some(1)), stream(["-"], None)))
 
   parser
-  |> s.run("abc-")
+  |> s_run("abc-")
   |> should.equal(success(
     ["a", "b", "c"],
     stream(["a", "b", "c", "-"], Some(4)),
@@ -373,7 +378,7 @@ pub fn parser_many1_till_test() {
   let parser = p.many1_till(c.letter(), c.char("-"))
 
   parser
-  |> s.run("a1-")
+  |> s_run("a1-")
   |> should.equal(error(
     stream(["a", "1", "-"], Some(1)),
     Some(["\"-\"", "a letter"]),
@@ -381,11 +386,11 @@ pub fn parser_many1_till_test() {
   ))
 
   parser
-  |> s.run("-")
+  |> s_run("-")
   |> should.equal(error(stream(["-"], Some(0)), Some(["a letter"]), None))
 
   parser
-  |> s.run("abc-")
+  |> s_run("abc-")
   |> should.equal(success(
     nea.of("a")
     |> nea.append("b")

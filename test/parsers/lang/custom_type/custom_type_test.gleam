@@ -11,7 +11,7 @@ import gleam/option.{None, Some}
 fn get_custom_types(str: String) {
   assert Ok(r) =
     ast_parser()
-    |> s.run(str)
+    |> s.run(str, Nil)
 
   assert True =
     str

@@ -11,7 +11,7 @@ import gleam/option.{None}
 fn get_constructor(str: String) {
   assert Ok(r) =
     record_constructor_parser()
-    |> s.run(str)
+    |> s.run(str, Nil)
 
   case string.length(str) == r.next.cursor {
     True -> Nil

@@ -14,7 +14,7 @@ import parsers/toml/parser as toml
 fn parse_toml(str: String) {
   assert Ok(r) =
     toml.parser()
-    |> s.run(str)
+    |> s.run(str, Nil)
 
   r.value
   |> io.debug

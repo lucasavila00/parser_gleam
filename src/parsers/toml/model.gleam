@@ -36,3 +36,15 @@ pub type TableRow =
 
 pub type Table =
   List(TableRow)
+
+pub type Explicitness {
+  VExplicit
+  VImplicit
+}
+
+pub fn is_explicit(e: Explicitness) {
+  case e {
+    VExplicit -> True
+    VImplicit -> False
+  }
+}

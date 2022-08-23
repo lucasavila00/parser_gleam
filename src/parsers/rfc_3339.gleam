@@ -73,7 +73,7 @@ pub type RFC3339 {
 // -------------------------------------------------------------------------------------
 
 type RFC3339Parser(a) =
-  p.Parser(String, a)
+  p.Parser(Nil, String, a)
 
 // -------------------------------------------------------------------------------------
 // RFC3339 - constructors
@@ -396,7 +396,7 @@ pub fn parse(it: String) -> Result(RFC3339, String) {
   case
     parser()
     |> p.chain_first(fn(_) { p.eof() })
-    |> s.run(it)
+    |> s.run(it, Nil)
   {
     Ok(s) -> Ok(s.value)
     Error(e) ->

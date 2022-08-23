@@ -24,7 +24,7 @@ pub fn parse_url_path() {
     })
 
   path_parser
-  |> s.run("/users/1")
+  |> s.run("/users/1", Nil)
   |> should.equal(success(
     User(1),
     stream(["/", "u", "s", "e", "r", "s", "/", "1"], Some(8)),
@@ -32,7 +32,7 @@ pub fn parse_url_path() {
   ))
 
   path_parser
-  |> s.run("/users/a")
+  |> s.run("/users/a", Nil)
   |> should.equal(error(
     stream(["/", "u", "s", "e", "r", "s", "/", "a"], Some(7)),
     Some(["an integer"]),

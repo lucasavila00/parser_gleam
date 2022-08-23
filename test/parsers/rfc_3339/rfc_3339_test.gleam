@@ -11,7 +11,7 @@ import gleam/option.{None, Some}
 fn parse_it(str: String) {
   assert Ok(r) =
     rfc_3339.parser()
-    |> s.run(str)
+    |> s.run(str, Nil)
 
   r.value
   |> io.debug

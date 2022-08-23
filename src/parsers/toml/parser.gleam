@@ -69,8 +69,8 @@ import parser_gleam/char as c
 import parser_gleam/string as s
 import parsers/rfc_3339
 import parsers/toml/model.{
-  FloatNumeric, Inf, NaN, Node, Table, VArray, VBoolean, VDatetime, VFloat, VInteger,
-  VNegative, VNone, VPositive, VString, VTArray, VTable,
+  Explicitness, FloatNumeric, Inf, NaN, Node, Table, VArray, VBoolean, VDatetime,
+  VFloat, VInteger, VNegative, VNone, VPositive, VString, VTArray, VTable, is_explicit,
 }
 import gleam/string
 import gleam/list
@@ -85,7 +85,7 @@ import fp_gl/non_empty_list as nel
 // TODO: add parsers to readme, like nimble
 
 type TomlParser(a) =
-  p.Parser(String, a)
+  p.Parser(Nil, String, a)
 
 /// Results in 'True' for whitespace chars, tab or space, according to spec.
 fn is_whitespace() {
@@ -898,7 +898,11 @@ fn list_init(it: List(Table)) -> List(Table) {
   |> list.reverse()
 }
 
-fn insert_named_section(top_table: Table, named_sections: NamedSection) -> Table {
+fn insert_named_section(
+  ex: Explicitness,
+  top_table: Table,
+  named_sections: NamedSection,
+) -> TomlParser(Table) {
   case named_sections {
     #([], _node) -> todo
     // In case 'name' is final (a top-level name)
@@ -910,14 +914,20 @@ fn insert_named_section(top_table: Table, named_sections: NamedSection) -> Table
         Error(_) ->
           top_table
           |> list.key_set(name, node)
+          |> p.of()
         Ok(VTable(t)) ->
           case node {
             VTable(nt) ->
               case merge(t, nt) {
-                Left(ds) -> todo
+                Left(ds) -> name_insert_error(ds, name)
                 Right(r) ->
-                  top_table
-                  |> list.key_set(name, VTable(r))
+                  case is_explicit(ex) {
+                    True -> todo
+                    False ->
+                      top_table
+                      |> list.key_set(name, VTable(r))
+                  }
+                  |> p.of()
               }
             _ -> todo
           }
@@ -926,6 +936,7 @@ fn insert_named_section(top_table: Table, named_sections: NamedSection) -> Table
             VTArray(na) ->
               top_table
               |> list.key_set(name, VTArray(list.append(a, na)))
+              |> p.of()
             _ -> todo
           }
         Ok(_) -> todo
@@ -937,30 +948,66 @@ fn insert_named_section(top_table: Table, named_sections: NamedSection) -> Table
         top_table
         |> list.key_find(name)
       {
-        Error(_) -> {
-          let tbl = insert_named_section([], #(ns, node))
-          top_table
-          |> list.key_set(name, VTable(tbl))
-        }
-        Ok(VTable(t)) -> {
-          let tbl = insert_named_section(t, #(ns, node))
-          top_table
-          |> list.key_set(name, VTable(tbl))
-        }
+        Error(_) ->
+          case is_explicit(ex) {
+            True -> todo
+            False ->
+              insert_named_section(model.VImplicit, [], #(ns, node))
+              |> p.map(fn(tbl) {
+                top_table
+                |> list.key_set(name, VTable(tbl))
+              })
+          }
+        Ok(VTable(t)) ->
+          case is_explicit(ex) {
+            True -> todo
+            False ->
+              insert_named_section(model.VImplicit, t, #(ns, node))
+              |> p.map(fn(tbl) {
+                top_table
+                |> list.key_set(name, VTable(tbl))
+              })
+          }
         Ok(VTArray(a)) -> {
           assert Ok(last) = list.last(a)
-          let tbl = insert_named_section(last, #(ns, node))
-          top_table
-          |> list.key_set(name, VTArray(list.append(list_init(a), [tbl])))
+          insert_named_section(model.VImplicit, last, #(ns, node))
+          |> p.map(fn(tbl) {
+            top_table
+            |> list.key_set(name, VTArray(list.append(list_init(a), [tbl])))
+          })
         }
         Ok(_) -> todo
       }
   }
 }
 
-fn load_into_top_table(top_table: Table, named_sections: List(NamedSection)) {
+fn update_state_or_error(name: List(String), node: Node) -> TomlParser(Nil) {
+  todo
+}
+
+fn name_insert_error(ns: List(String), name: String) -> TomlParser(a) {
+  let ns =
+    ns
+    |> string.join("")
+  p.fail()
+  |> p.expected(
+    ["Cannot redefine key(s) (", ns, "), from table named '", name, "'."]
+    |> string.join(""),
+  )
+}
+
+fn load_into_top_table(
+  top_table: Table,
+  named_sections: List(NamedSection),
+) -> TomlParser(Table) {
   named_sections
-  |> list.fold(top_table, fn(p, c) { insert_named_section(p, c) })
+  |> list.fold(
+    p.of(top_table),
+    fn(prev, c) {
+      prev
+      |> p.chain(fn(prev) { insert_named_section(model.VExplicit, prev, c) })
+    },
+  )
 }
 
 pub fn parser() -> TomlParser(Table) {
@@ -972,7 +1019,7 @@ pub fn parser() -> TomlParser(Table) {
       |> p.chain(fn(named_sections) {
         // Ensure the input is completely consumed
         p.eof()
-        |> p.map(fn(_) { load_into_top_table(top_table, named_sections) })
+        |> p.chain(fn(_) { load_into_top_table(top_table, named_sections) })
       })
     })
   })
@@ -982,7 +1029,7 @@ pub fn parse(it: String) -> Result(Table, String) {
   case
     parser()
     |> p.chain_first(fn(_) { p.eof() })
-    |> s.run(it)
+    |> s.run(it, Nil)
   {
     Ok(s) -> Ok(s.value)
     Error(e) ->

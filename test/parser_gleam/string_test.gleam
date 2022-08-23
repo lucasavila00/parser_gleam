@@ -12,11 +12,16 @@ pub fn main() {
   gleeunit.main()
 }
 
+fn s_run(parser, str) {
+  parser
+  |> s.run(str, Nil)
+}
+
 pub fn parse_empty_string_test() {
   let parser = s.string("")
 
   parser
-  |> s.run("foo")
+  |> s_run("foo")
   |> should.equal(success(
     "",
     stream(["f", "o", "o"], Some(0)),
@@ -28,7 +33,7 @@ pub fn parse_non_empty_string_test() {
   let parser = s.string("foo")
 
   parser
-  |> s.run("foo")
+  |> s_run("foo")
   |> should.equal(success(
     "foo",
     stream(["f", "o", "o"], Some(3)),
@@ -36,7 +41,7 @@ pub fn parse_non_empty_string_test() {
   ))
 
   parser
-  |> s.run("foobar")
+  |> s_run("foobar")
   |> should.equal(success(
     "foo",
     stream(["f", "o", "o", "b", "a", "r"], Some(3)),
@@ -44,7 +49,7 @@ pub fn parse_non_empty_string_test() {
   ))
 
   parser
-  |> s.run("barfoo")
+  |> s_run("barfoo")
   |> should.equal(error(
     stream(["b", "a", "r", "f", "o", "o"], None),
     Some(["\"foo\""]),
@@ -73,7 +78,7 @@ pub fn long_strings_recursion_limit_test() {
   let parser = s.string(target)
 
   parser
-  |> s.run(source)
+  |> s_run(source)
   |> should.equal(success(
     target,
     stream(
@@ -93,7 +98,7 @@ pub fn many_repeated_sequences_target_test() {
   let parser = s.many(s.string("ab"))
 
   parser
-  |> s.run("ab")
+  |> s_run("ab")
   |> should.equal(success(
     "ab",
     stream(["a", "b"], Some(2)),
@@ -101,7 +106,7 @@ pub fn many_repeated_sequences_target_test() {
   ))
 
   parser
-  |> s.run("abab")
+  |> s_run("abab")
   |> should.equal(success(
     "abab",
     stream(["a", "b", "a", "b"], Some(4)),
@@ -109,7 +114,7 @@ pub fn many_repeated_sequences_target_test() {
   ))
 
   parser
-  |> s.run("aba")
+  |> s_run("aba")
   |> should.equal(success(
     "ab",
     stream(["a", "b", "a"], Some(2)),
@@ -117,7 +122,7 @@ pub fn many_repeated_sequences_target_test() {
   ))
 
   parser
-  |> s.run("ac")
+  |> s_run("ac")
   |> should.equal(success(
     "",
     stream(["a", "c"], None),
@@ -131,7 +136,7 @@ pub fn many_repeat_long_sequences_no_rec_limit() {
     |> string.repeat(10000)
 
   s.many(c.alphanum())
-  |> s.run(source)
+  |> s_run(source)
   |> should.equal(success(
     source,
     stream(
@@ -154,11 +159,11 @@ pub fn string_one_of_test() {
   let parser = s.one_of(["a", "b"])
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success("a", stream(["a"], Some(1)), stream(["a"], None)))
 
   parser
-  |> s.run("ab")
+  |> s_run("ab")
   |> should.equal(success(
     "a",
     stream(["a", "b"], Some(1)),
@@ -166,7 +171,7 @@ pub fn string_one_of_test() {
   ))
 
   parser
-  |> s.run("ba")
+  |> s_run("ba")
   |> should.equal(success(
     "b",
     stream(["b", "a"], Some(1)),
@@ -174,7 +179,7 @@ pub fn string_one_of_test() {
   ))
 
   parser
-  |> s.run("ca")
+  |> s_run("ca")
   |> should.equal(error(
     stream(["c", "a"], None),
     Some(["\"a\"", "\"b\""]),
@@ -186,11 +191,11 @@ pub fn string_int_test() {
   let parser = s.int()
 
   parser
-  |> s.run("1")
+  |> s_run("1")
   |> should.equal(success(1, stream(["1"], Some(1)), stream(["1"], None)))
 
   parser
-  |> s.run("-1")
+  |> s_run("-1")
   |> should.equal(success(
     -1,
     stream(["-", "1"], Some(2)),
@@ -198,7 +203,7 @@ pub fn string_int_test() {
   ))
 
   parser
-  |> s.run("10")
+  |> s_run("10")
   |> should.equal(success(
     10,
     stream(["1", "0"], Some(2)),
@@ -206,7 +211,7 @@ pub fn string_int_test() {
   ))
 
   parser
-  |> s.run("-10")
+  |> s_run("-10")
   |> should.equal(success(
     -10,
     stream(["-", "1", "0"], Some(3)),
@@ -214,7 +219,7 @@ pub fn string_int_test() {
   ))
 
   parser
-  |> s.run("0.1")
+  |> s_run("0.1")
   |> should.equal(success(
     0,
     stream(["0", ".", "1"], Some(1)),
@@ -222,7 +227,7 @@ pub fn string_int_test() {
   ))
 
   parser
-  |> s.run("-0.1")
+  |> s_run("-0.1")
   |> should.equal(success(
     -0,
     stream(["-", "0", ".", "1"], Some(2)),
@@ -230,7 +235,7 @@ pub fn string_int_test() {
   ))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(error(stream(["a"], None), Some(["an integer"]), None))
 }
 
@@ -238,11 +243,11 @@ pub fn string_float_test() {
   let parser = s.float()
 
   parser
-  |> s.run("1")
+  |> s_run("1")
   |> should.equal(success(1.0, stream(["1"], Some(1)), stream(["1"], None)))
 
   parser
-  |> s.run("-1")
+  |> s_run("-1")
   |> should.equal(success(
     -1.0,
     stream(["-", "1"], Some(2)),
@@ -250,7 +255,7 @@ pub fn string_float_test() {
   ))
 
   parser
-  |> s.run("10")
+  |> s_run("10")
   |> should.equal(success(
     10.0,
     stream(["1", "0"], Some(2)),
@@ -258,7 +263,7 @@ pub fn string_float_test() {
   ))
 
   parser
-  |> s.run("-10")
+  |> s_run("-10")
   |> should.equal(success(
     -10.0,
     stream(["-", "1", "0"], Some(3)),
@@ -266,7 +271,7 @@ pub fn string_float_test() {
   ))
 
   parser
-  |> s.run("0.1")
+  |> s_run("0.1")
   |> should.equal(success(
     0.1,
     stream(["0", ".", "1"], Some(3)),
@@ -274,7 +279,7 @@ pub fn string_float_test() {
   ))
 
   parser
-  |> s.run("-0.1")
+  |> s_run("-0.1")
   |> should.equal(success(
     -0.1,
     stream(["-", "0", ".", "1"], Some(4)),
@@ -282,7 +287,7 @@ pub fn string_float_test() {
   ))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(error(stream(["a"], None), Some(["a float"]), None))
 }
 
@@ -290,7 +295,7 @@ pub fn double_quoted_test() {
   let parser = s.double_quoted_string()
 
   parser
-  |> s.run("\"\"")
+  |> s_run("\"\"")
   |> should.equal(success(
     "",
     stream(["\"", "\""], Some(2)),
@@ -298,7 +303,7 @@ pub fn double_quoted_test() {
   ))
 
   parser
-  |> s.run("\"a\"")
+  |> s_run("\"a\"")
   |> should.equal(success(
     "a",
     stream(["\"", "a", "\""], Some(3)),
@@ -306,7 +311,7 @@ pub fn double_quoted_test() {
   ))
 
   parser
-  |> s.run("\"ab\"")
+  |> s_run("\"ab\"")
   |> should.equal(success(
     "ab",
     stream(["\"", "a", "b", "\""], Some(4)),
@@ -314,7 +319,7 @@ pub fn double_quoted_test() {
   ))
 
   parser
-  |> s.run("\"ab\"c")
+  |> s_run("\"ab\"c")
   |> should.equal(success(
     "ab",
     stream(["\"", "a", "b", "\"", "c"], Some(4)),
@@ -322,7 +327,7 @@ pub fn double_quoted_test() {
   ))
 
   parser
-  |> s.run("\"a\\\"b\"")
+  |> s_run("\"a\\\"b\"")
   |> should.equal(success(
     "a\\\"b",
     stream(["\"", "a", "\\", "\"", "b", "\""], Some(6)),
@@ -334,23 +339,23 @@ pub fn string_spaces_test() {
   let parser = s.spaces()
 
   parser
-  |> s.run("")
+  |> s_run("")
   |> should.equal(success("", stream([], None), stream([], None)))
 
   parser
-  |> s.run(" ")
+  |> s_run(" ")
   |> should.equal(success(" ", stream([" "], Some(1)), stream([" "], None)))
 
   parser
-  |> s.run("\t")
+  |> s_run("\t")
   |> should.equal(success("\t", stream(["\t"], Some(1)), stream(["\t"], None)))
 
   parser
-  |> s.run("\n")
+  |> s_run("\n")
   |> should.equal(success("\n", stream(["\n"], Some(1)), stream(["\n"], None)))
 
   parser
-  |> s.run("\n\t")
+  |> s_run("\n\t")
   |> should.equal(success(
     "\n\t",
     stream(["\n", "\t"], Some(2)),
@@ -358,7 +363,7 @@ pub fn string_spaces_test() {
   ))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(success("", stream(["a"], None), stream(["a"], None)))
 }
 
@@ -366,11 +371,11 @@ pub fn string_spaces1_test() {
   let parser = s.spaces1()
 
   parser
-  |> s.run(" ")
+  |> s_run(" ")
   |> should.equal(success(" ", stream([" "], Some(1)), stream([" "], None)))
 
   parser
-  |> s.run("  ")
+  |> s_run("  ")
   |> should.equal(success(
     "  ",
     stream([" ", " "], Some(2)),
@@ -378,7 +383,7 @@ pub fn string_spaces1_test() {
   ))
 
   parser
-  |> s.run(" a")
+  |> s_run(" a")
   |> should.equal(success(
     " ",
     stream([" ", "a"], Some(1)),
@@ -386,7 +391,7 @@ pub fn string_spaces1_test() {
   ))
 
   parser
-  |> s.run("\n\t")
+  |> s_run("\n\t")
   |> should.equal(success(
     "\n\t",
     stream(["\n", "\t"], Some(2)),
@@ -394,10 +399,10 @@ pub fn string_spaces1_test() {
   ))
 
   parser
-  |> s.run("")
+  |> s_run("")
   |> should.equal(error(stream([], None), Some(["a whitespace"]), None))
 
   parser
-  |> s.run("a")
+  |> s_run("a")
   |> should.equal(error(stream(["a"], None), Some(["a whitespace"]), None))
 }
