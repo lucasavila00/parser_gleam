@@ -25,18 +25,18 @@ pub type Parser(s, i, a) =
 ///
 /// This is equivalent to the monadic `of`.
 pub fn succeed(a) -> Parser(s, i, a) {
-  fn(_s, i) { success(a, i, i) }
+  fn(s, i) { success(a, i, i, s) }
 }
 
 /// The `fail` parser will just fail immediately without consuming any input
 pub fn fail() -> Parser(s, i, a) {
-  fn(_s, i) { error(i, None, None) }
+  fn(s, i) { error(i, None, None, s) }
 }
 
 /// The `failAt` parser will fail immediately without consuming any input,
 /// but will report the failure at the provided input position.
 pub fn fail_at(i: Stream(i)) -> Parser(s, i, a) {
-  fn(_s, _i) { error(i, None, None) }
+  fn(s, _i) { error(i, None, None, s) }
 }
 
 // -------------------------------------------------------------------------------------
@@ -58,8 +58,8 @@ pub fn expected(p: Parser(s, i, a), message: String) -> Parser(s, i, a) {
 pub fn item() -> Parser(s, i, i) {
   fn(s, i) {
     case get_and_next(i) {
-      None -> error(i, None, None)
-      Some(e) -> success(e.value, e.next, i)
+      None -> error(i, None, None, s)
+      Some(e) -> success(e.value, e.next, i, s)
     }
   }
 }
@@ -84,9 +84,9 @@ pub fn cut(p: Parser(s, i, a)) -> Parser(s, i, a) {
 pub fn seq(fa: Parser(s, i, a), f: fn(a) -> Parser(s, i, b)) {
   fn(s, i) {
     fa(s, i)
-    |> result.then(fn(s2) {
-      f(s2.value)(s, s2.next)
-      |> result.then(fn(next) { success(next.value, next.next, i) })
+    |> result.then(fn(stream) {
+      f(stream.value)(s, stream.next)
+      |> result.then(fn(next) { success(next.value, next.next, i, s) })
     })
   }
 }
@@ -123,7 +123,7 @@ pub fn either(p: Parser(s, i, a), f: fn() -> Parser(s, i, a)) -> Parser(s, i, a)
 pub fn with_start(p: Parser(s, i, a)) -> Parser(s, i, #(a, Stream(i))) {
   fn(s, i) {
     p(s, i)
-    |> result.map(fn(p) { ParseSuccess(#(p.value, i), p.next, p.start) })
+    |> result.map(fn(p) { ParseSuccess(#(p.value, i), p.next, p.start, s) })
   }
 }
 
@@ -132,8 +132,8 @@ pub fn eof() -> Parser(s, i, Nil) {
   expected(
     fn(s, i) {
       case at_end(i) {
-        True -> success(Nil, i, i)
-        False -> error(i, None, None)
+        True -> success(Nil, i, i, s)
+        False -> error(i, None, None, s)
       }
     },
     "end of file",
@@ -166,7 +166,9 @@ pub fn of(a) -> Parser(s, i, a) {
 pub fn map(ma: Parser(s, i, a), f: fn(a) -> b) -> Parser(s, i, b) {
   fn(s, i) {
     ma(s, i)
-    |> result.map(fn(s) { ParseSuccess(f(s.value), s.next, s.start) })
+    |> result.map(fn(stream) {
+      ParseSuccess(f(stream.value), stream.next, stream.start, s)
+    })
   }
 }
 
@@ -203,13 +205,13 @@ pub fn chain_rec(
   f: fn(a) -> Parser(s, i, Result(b, a)),
 ) -> Parser(s, i, b) {
   let split = fn(start: Stream(i)) {
-    fn(result: ParseSuccess(i, Result(b, a))) -> Result(
+    fn(result: ParseSuccess(s, i, Result(b, a))) -> Result(
       ParseResult(s, i, b),
       Next(i, a),
     ) {
       case result.value {
         Error(e) -> Error(Next(e, result.next))
-        Ok(r) -> Ok(success(r, result.next, start))
+        Ok(r) -> Ok(success(r, result.next, start, result.state))
       }
     }
   }
@@ -219,7 +221,8 @@ pub fn chain_rec(
       fn(state) {
         let result = f(state.value)(pstate, state.stream)
         case result {
-          Error(r) -> Ok(error(state.stream, Some(r.expected), Some(r.fatal)))
+          Error(r) ->
+            Ok(error(state.stream, Some(r.expected), Some(r.fatal), r.state))
           Ok(r) -> split(start)(r)
         }
       },
@@ -352,7 +355,7 @@ pub fn filter(predicate: Predicate(a)) {
       |> result.then(fn(next) {
         case predicate(next.value) {
           True -> Ok(next)
-          False -> error(i, None, None)
+          False -> error(i, None, None, s)
         }
       })
     }
@@ -380,7 +383,7 @@ pub fn surrounded_by(bound: Parser(s, i, a)) {
 pub fn look_ahead(p: Parser(s, i, a)) -> Parser(s, i, a) {
   fn(s, i) {
     p(s, i)
-    |> result.then(fn(next) { success(next.value, i, i) })
+    |> result.then(fn(next) { success(next.value, i, i, s) })
   }
 }
 

@@ -6,16 +6,16 @@ import gleam/list
 // -------------------------------------------------------------------------------------
 // model
 // -------------------------------------------------------------------------------------
-pub type ParseSuccess(i, a) {
-  ParseSuccess(value: a, next: Stream(i), start: Stream(i))
+pub type ParseSuccess(s, i, a) {
+  ParseSuccess(value: a, next: Stream(i), start: Stream(i), state: s)
 }
 
-pub type ParseError(i) {
-  ParseError(input: Stream(i), expected: List(String), fatal: Bool)
+pub type ParseError(s, i) {
+  ParseError(input: Stream(i), expected: List(String), fatal: Bool, state: s)
 }
 
 pub type ParseResult(s, i, a) =
-  Result(ParseSuccess(i, a), ParseError(i))
+  Result(ParseSuccess(s, i, a), ParseError(s, i))
 
 // -------------------------------------------------------------------------------------
 // constructors
@@ -25,14 +25,16 @@ pub fn success(
   value: a,
   next: Stream(i),
   start: Stream(i),
+  state: s,
 ) -> ParseResult(s, i, a) {
-  Ok(ParseSuccess(value: value, next: next, start: start))
+  Ok(ParseSuccess(value: value, next: next, start: start, state: state))
 }
 
 pub fn error(
   input: Stream(i),
   expected: Option(List(String)),
   fatal: Option(Bool),
+  state: s,
 ) -> ParseResult(s, i, a) {
   Error(ParseError(
     input: input,
@@ -40,6 +42,7 @@ pub fn error(
     |> option.unwrap([]),
     fatal: fatal
     |> option.unwrap(False),
+    state: state,
   ))
 }
 
@@ -48,17 +51,20 @@ pub fn error(
 // -------------------------------------------------------------------------------------
 
 pub fn with_expected(
-  err: ParseError(i),
+  err: ParseError(s, i),
   expected: List(String),
-) -> ParseError(i) {
-  ParseError(err.input, expected, err.fatal)
+) -> ParseError(s, i) {
+  ParseError(err.input, expected, err.fatal, err.state)
 }
 
-pub fn escalate(err: ParseError(i)) -> ParseError(i) {
-  ParseError(err.input, err.expected, True)
+pub fn escalate(err: ParseError(s, i)) -> ParseError(s, i) {
+  ParseError(err.input, err.expected, True, err.state)
 }
 
-pub fn extend(err1: ParseError(i), err2: ParseError(i)) -> ParseError(i) {
+pub fn extend(
+  err1: ParseError(s, i),
+  err2: ParseError(s, i),
+) -> ParseError(s, i) {
   get_semigroup().concat(err1, err2)
 }
 
@@ -66,15 +72,20 @@ pub fn extend(err1: ParseError(i), err2: ParseError(i)) -> ParseError(i) {
 // instances
 // -------------------------------------------------------------------------------------
 
-fn get_semigroup() -> Semigroup(ParseError(i)) {
-  Semigroup(fn(x: ParseError(i), y: ParseError(i)) {
+fn get_semigroup() -> Semigroup(ParseError(s, i)) {
+  Semigroup(fn(x: ParseError(s, i), y: ParseError(s, i)) {
     case x.input.cursor < y.input.cursor {
       True -> y
       False ->
         case x.input.cursor > y.input.cursor {
           True -> x
           False ->
-            ParseError(x.input, list.append(x.expected, y.expected), x.fatal)
+            ParseError(
+              x.input,
+              list.append(x.expected, y.expected),
+              x.fatal,
+              x.state,
+            )
         }
     }
   })

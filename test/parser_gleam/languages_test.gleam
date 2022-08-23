@@ -29,6 +29,7 @@ pub fn parse_url_path() {
     User(1),
     stream(["/", "u", "s", "e", "r", "s", "/", "1"], Some(8)),
     stream(["/", "u", "s", "e", "r", "s", "/", "1"], None),
+    Nil,
   ))
 
   path_parser
@@ -37,5 +38,6 @@ pub fn parse_url_path() {
     stream(["/", "u", "s", "e", "r", "s", "/", "a"], Some(7)),
     Some(["an integer"]),
     None,
+    Nil,
   ))
 }

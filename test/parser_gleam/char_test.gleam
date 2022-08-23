@@ -2,12 +2,20 @@ import gleeunit
 import gleeunit/should
 import parser_gleam/char as c
 import parser_gleam/string as s
-import parser_gleam/parse_result.{error, success}
+import parser_gleam/parse_result
 import parser_gleam/stream.{stream} as st
 import gleam/option.{None, Some}
 
 pub fn main() {
   gleeunit.main()
+}
+
+fn error(a, b, c) {
+  parse_result.error(a, b, c, Nil)
+}
+
+fn success(a, b, c) {
+  parse_result.success(a, b, c, Nil)
 }
 
 fn s_run(parser, str) {

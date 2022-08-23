@@ -4,7 +4,7 @@ import parser_gleam/char as c
 import fp_gl/non_empty_list as nea
 import parser_gleam/parser as p
 import parser_gleam/string as s
-import parser_gleam/parse_result.{error, success}
+import parser_gleam/parse_result
 import parser_gleam/stream.{stream} as st
 import gleam/option.{None, Some}
 import gleam/string
@@ -16,6 +16,14 @@ pub fn main() {
 fn s_run(parser, str) {
   parser
   |> s.run(str, Nil)
+}
+
+fn error(a, b, c) {
+  parse_result.error(a, b, c, Nil)
+}
+
+fn success(a, b, c) {
+  parse_result.success(a, b, c, Nil)
 }
 
 pub fn parser_eof_test() {
